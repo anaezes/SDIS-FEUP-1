@@ -1,3 +1,5 @@
+import sdis.common.Message;
+
 import java.io.IOException;
 import java.net.*;
 
@@ -5,6 +7,8 @@ public class Client {
 
     private String mcast_addr;
     private int mcast_port;
+    private Message message;
+
 
     public Client(String[] args) {
         mcast_addr = args[0];
