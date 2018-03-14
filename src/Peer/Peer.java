@@ -40,8 +40,8 @@ public class Peer extends Thread{
     public Peer(String[] args) {
 
         initControlChannel(args[1], args[2]);
-        //initDataChannel(args[3], args[4]);
-        //initRecoveryChannel(args[5], args[6]);
+        initDataChannel(args[3], args[4]);
+        initRecoveryChannel(args[5], args[6]);
     }
 
     private void initControlChannel(String address, String Port) {
@@ -92,8 +92,8 @@ public class Peer extends Thread{
 
     public void start() {
         new Thread(() -> handleControlChannel()).start();
-        //new Thread(() -> handleDataChannel()).start();
-        //new Thread(() -> handleDataRecoveryChannel()).start();
+        new Thread(() -> handleDataChannel()).start();
+        new Thread(() -> handleDataRecoveryChannel()).start();
     }
 
     public void handleControlChannel() {
@@ -103,13 +103,47 @@ public class Peer extends Thread{
 
         while (true) {
             try {
-                System.out.println("á espera...");
+                System.out.println("Control Channel waiting...");
 
                 mcSocket.receive(packet);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("RECEBIDO: "+ new String(packet.getData(), 0, packet.getLength()));
+            System.out.println("Control Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
+        }
+    }
+
+    public void handleDataChannel() {
+
+        byte[] buffer = new byte[256];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+        while (true) {
+            try {
+                System.out.println("Data Channel waiting...");
+
+                mdbSocket.receive(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Data Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
+        }
+    }
+
+    public void handleDataRecoveryChannel() {
+
+        byte[] buffer = new byte[256];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+        while (true) {
+            try {
+                System.out.println("Data Recovery Channel waiting...");
+
+                mdrSocket.receive(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Data Recovery Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
         }
     }
 }
