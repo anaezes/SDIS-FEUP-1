@@ -1,4 +1,4 @@
-package sdis.common;
+package Common;
 
 import java.io.UnsupportedEncodingException;
 

@@ -1,4 +1,4 @@
-package sdis.common;
+package Common;
 
 /*
  * This is the version of the protocol. It is a three ASCII char sequence with the format <n>'.'<m>,
