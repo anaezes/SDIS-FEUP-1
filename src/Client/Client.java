@@ -30,8 +30,8 @@ public class Client {
 
     public static void main(String[] args) throws UnknownHostException {
 
-        if (args.length != 2) {
-            System.out.println("Usage: java Client <mcast_addr> <mcast_port>");
+        if (args.length > 1 || args.length < 5) {
+            System.out.println("Usage: java Client <peer_ap> <operation> <opnd_1> <opnd_2>");
             return;
         }
 

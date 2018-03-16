@@ -7,11 +7,12 @@ import java.net.*;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 
 public class Peer extends Thread implements IControl {
 
-    private int peerId;
+    private final int peerId;
 
     // Control channel
     private MulticastSocket mcSocket;
@@ -36,16 +37,24 @@ public class Peer extends Thread implements IControl {
         }
 
         Peer peer = new Peer(args);
-        peer.peerId = Integer.parseInt(args[0]);
-        System.out.println("Peer Id: " + peer.peerId);
+        System.out.println("Peer Id: " + peer.getPeerId());
 
         try {
-            IControl control = (IControl) UnicastRemoteObject.exportObject(peer, 0);
 
+            Registry registry;
             // Bind the remote object's stub in the registry
-            Registry registry = LocateRegistry.getRegistry();
-            registry.bind("Hello", control);
+            try {
+                registry = LocateRegistry.createRegistry(1099);
+            } catch (ExportException e) {
+                if (e.toString().contains("Port already in use")) {
+                    registry = LocateRegistry.getRegistry();
+                } else {
+                    throw e;
+                }
+            }
 
+            IControl control = (IControl) UnicastRemoteObject.exportObject(peer, 0);
+            registry.bind(peer.getId() + "Hello", control);
             System.err.println("Server ready");
         } catch (Exception e) {
             System.err.println("Server exception: " + e.toString());
@@ -60,6 +69,8 @@ public class Peer extends Thread implements IControl {
         initControlChannel(args[1], args[2]);
         initDataChannel(args[3], args[4]);
         initRecoveryChannel(args[5], args[6]);
+
+        this.peerId = Integer.parseInt(args[0]);
     }
 
     private void initControlChannel(String address, String Port) {
@@ -163,6 +174,10 @@ public class Peer extends Thread implements IControl {
             }
             System.out.println("Data Recovery Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
         }
+    }
+
+    public int getPeerId() {
+        return this.peerId;
     }
 
     @Override
