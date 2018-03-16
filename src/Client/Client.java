@@ -4,33 +4,40 @@ import Common.remote.IControl;
 
 import java.io.IOException;
 import java.net.*;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 public class Client {
 
-    private String mcast_addr;
-    private int mcast_port;
+    String peerId;
+    Registry registry;
+    IControl control;
+
+    private final String operation;
+    String opnd_1;
+    String opnd_2;
+
     //private Message message;
 
     public Client(String[] args) {
-        mcast_addr = args[0];
-        mcast_port = Integer.parseInt(args[1]);
 
+        peerId = args[0];
+        operation = args[1];
+
+        // make RMI connection with Peer
         try {
-            Registry registry = LocateRegistry.getRegistry(null);
-            IControl control = (IControl) registry.lookup("Hello");
-            String response = control.Backup();
-            System.out.println("Response: " + response);
+            registry = LocateRegistry.getRegistry(null);
+            control = (IControl) registry.lookup("peer" + peerId);
         } catch (Exception e) {
             System.err.println("Client exception: " + e.toString());
             e.printStackTrace();
         }
     }
 
-    public static void main(String[] args) throws UnknownHostException {
+    public static void main(String[] args) throws UnknownHostException, RemoteException {
 
-        if (args.length > 1 || args.length < 5) {
+        if (args.length < 1 || args.length > 5) {
             System.out.println("Usage: java Client <peer_ap> <operation> <opnd_1> <opnd_2>");
             return;
         }
@@ -38,28 +45,41 @@ public class Client {
         //create  client
         Client client = new Client(args);
 
-        //Do request to peer
-        client.sendMessage(args, client);
+       //make request
+        try {
+            makeRequest(client);
+        }
+        catch (RemoteException e){
+            System.out.println("Error: " + e.toString());
+        }
+
     }
 
-    private void sendMessage(String[] args, Client client) {
-        try {
-            // send request
-            DatagramSocket socket = new DatagramSocket();
+    private static void makeRequest(Client client) throws RemoteException {
 
-            String request = "esta é a string de teste que vai ser enviada do cliente para o servidor :)";
-            System.out.println(request);
+        String response;
 
-            byte[] bfr = request.getBytes();
-            DatagramPacket packet = new DatagramPacket(bfr, bfr.length, InetAddress.getByName(client.mcast_addr), client.mcast_port);
-            socket.send(packet);
-
-            socket.close();
-
-        } catch(SocketException e){
-            e.printStackTrace();
-        } catch(IOException e) {
-            e.printStackTrace();
+        switch (client.getOperation()) {
+            case "BACKUP":
+                response = client.control.backup();
+                break;
+            case "DELETE":
+                response = client.control.delete();
+                break;
+            case "RESTORE":
+                response = client.control.restore();
+                break;
+            case "RECLAIM":
+                response = client.control.reclaim();
+                break;
+            default:
+                response = "Invalid Operation";
         }
+
+        System.out.println("Response: " + response);
+    }
+
+    public String getOperation() {
+        return this.operation;
     }
 }

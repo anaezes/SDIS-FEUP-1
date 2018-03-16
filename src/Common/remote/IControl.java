@@ -4,5 +4,8 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface IControl extends Remote {
-    String Backup () throws RemoteException;
+    String backup () throws RemoteException;
+    String delete () throws RemoteException;
+    String restore () throws RemoteException;
+    String reclaim () throws RemoteException;
 }

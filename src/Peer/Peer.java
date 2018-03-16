@@ -54,8 +54,8 @@ public class Peer extends Thread implements IControl {
             }
 
             IControl control = (IControl) UnicastRemoteObject.exportObject(peer, 0);
-            registry.bind(peer.getId() + "Hello", control);
-            System.err.println("Server ready");
+            registry.bind( "peer" + peer.getPeerId(), control);
+            System.err.println("Server ready\n");
         } catch (Exception e) {
             System.err.println("Server exception: " + e.toString());
             e.printStackTrace();
@@ -133,7 +133,6 @@ public class Peer extends Thread implements IControl {
         while (true) {
             try {
                 System.out.println("Control Channel waiting...");
-
                 mcSocket.receive(packet);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -176,12 +175,44 @@ public class Peer extends Thread implements IControl {
         }
     }
 
+    private void sendMessage(String message) {
+
+        System.err.println("Send message...\n");
+
+        try {
+            byte[] bfr = message.getBytes();
+            DatagramPacket packet = new DatagramPacket(bfr, bfr.length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
+            mcSocket.send(packet);
+        } catch(SocketException e){
+            e.printStackTrace();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public int getPeerId() {
         return this.peerId;
     }
 
     @Override
-    public String Backup() throws RemoteException {
-        return "Hello World!";
+    public String backup() throws RemoteException {
+        String request = "Hello world !!! :)";
+        this.sendMessage(request);
+        return "Operation backup...";
+    }
+
+    @Override
+    public String delete() throws RemoteException {
+        return "Operation delete...";
+    }
+
+    @Override
+    public String restore() throws RemoteException {
+        return "Operation restore...";
+    }
+
+    @Override
+    public String reclaim() throws RemoteException {
+        return "Operation reclaim...";
     }
 }
