@@ -1,9 +1,15 @@
 package Peer;
 
+import Common.remote.IControl;
+
 import java.io.IOException;
 import java.net.*;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 
-public class Peer extends Thread{
+public class Peer extends Thread implements IControl {
 
     private int peerId;
 
@@ -29,12 +35,24 @@ public class Peer extends Thread{
             return;
         }
 
-        Peer Peer = new Peer(args);
+        Peer peer = new Peer(args);
+        peer.peerId = Integer.parseInt(args[0]);
+        System.out.println("Peer Id: " + peer.peerId);
 
-        Peer.peerId = Integer.parseInt(args[0]);
-        System.out.println("Peer Id: " + Peer.peerId);
+        try {
+            IControl control = (IControl) UnicastRemoteObject.exportObject(peer, 0);
 
-        Peer.start();
+            // Bind the remote object's stub in the registry
+            Registry registry = LocateRegistry.getRegistry();
+            registry.bind("Hello", control);
+
+            System.err.println("Server ready");
+        } catch (Exception e) {
+            System.err.println("Server exception: " + e.toString());
+            e.printStackTrace();
+        }
+
+        peer.start();
     }
 
     public Peer(String[] args) {
@@ -145,5 +163,10 @@ public class Peer extends Thread{
             }
             System.out.println("Data Recovery Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
         }
+    }
+
+    @Override
+    public String Backup() throws RemoteException {
+        return "Hello World!";
     }
 }

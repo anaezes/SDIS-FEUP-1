@@ -1,7 +1,11 @@
 package Client;
 
+import Common.remote.IControl;
+
 import java.io.IOException;
 import java.net.*;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 public class Client {
 
@@ -12,6 +16,16 @@ public class Client {
     public Client(String[] args) {
         mcast_addr = args[0];
         mcast_port = Integer.parseInt(args[1]);
+
+        try {
+            Registry registry = LocateRegistry.getRegistry(null);
+            IControl control = (IControl) registry.lookup("Hello");
+            String response = control.Backup();
+            System.out.println("Response: " + response);
+        } catch (Exception e) {
+            System.err.println("Client exception: " + e.toString());
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) throws UnknownHostException {

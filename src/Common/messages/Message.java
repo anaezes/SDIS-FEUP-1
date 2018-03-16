@@ -1,4 +1,4 @@
-package Common;
+package Common.messages;
 
 import java.io.UnsupportedEncodingException;
 
