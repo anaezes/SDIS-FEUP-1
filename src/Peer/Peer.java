@@ -4,6 +4,9 @@ import Common.remote.IControl;
 
 import java.io.IOException;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -11,6 +14,7 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 
 public class Peer extends Thread implements IControl {
+    private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
 
     private final int peerId;
 
@@ -40,6 +44,8 @@ public class Peer extends Thread implements IControl {
         System.out.println("Peer Id: " + peer.getPeerId());
 
         try {
+            //verify if this peer base directory exists. If not creates it.
+            peer.checkFileSystem();
 
             Registry registry;
             // Bind the remote object's stub in the registry
@@ -52,7 +58,6 @@ public class Peer extends Thread implements IControl {
                     throw e;
                 }
             }
-
             IControl control = (IControl) UnicastRemoteObject.exportObject(peer, 0);
             registry.bind( "peer" + peer.getPeerId(), control);
             System.err.println("Server ready\n");
@@ -194,8 +199,27 @@ public class Peer extends Thread implements IControl {
         return this.peerId;
     }
 
+    public String getFileSystemPath() {
+        return FILES_DIRECTORY + this.peerId;
+    }
+
+    public void checkFileSystem() throws IOException {
+        Path path = Paths.get(this.getFileSystemPath());
+        Files.createDirectory(path);
+    }
+
     @Override
-    public String backup() throws RemoteException {
+    public String backup(String fileContent, String fileName, int replicationDegree) throws RemoteException {
+
+        System.out.println("RECEBI ::::");
+        System.out.println(fileContent);
+
+        try {
+            Files.write(Paths.get(getFileSystemPath()+"/"+fileName), fileContent.getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         String request = "Hello world !!! :)";
         this.sendMessage(request);
         return "Operation backup...";
