@@ -54,3 +54,42 @@ Idealmente criar um rmiRegistry por peer, mas tem complicações de ports (defau
 
 	
 ________________________________________________________________________________________________________________________
+
+TCP in Java - Restore protocol enhancement
+
+Asymetric Model
+ServerSocket 
+	usado no lado do servidor
+	exclusivamente para estabelecer conecções
+
+Socket
+	usados tanto pelo servidor como pelo cliente
+	usado para transferir dados
+
+
+ServerSocket(int port)
+ServerSocket(int port, int backlog, InetAddress addr)
+	Socket	ServerSocket.accept();
+	ServerSocket.close();
+
+Socket(InetAddr addr, int port)
+	usar java.io. para transferir dados (streams)
+	InputStream Socket.getInputStream(); // Ler dados -> InputStreamReader -> BufferedReader
+	OutputStream Socker.getOutputStream(); // Enviar dados -> PrintWriter
+	Socket.close(); // Não deve de ser usado pois pode causar perda de dados
+	Socket.shutdownOutput(); // Maneira correta de encerrar a ligação. O emissor de dados envia um pedido para fechar o receptor
+
+PrintWriter(OutputStream)
+	PrintWriter.printLn();
+	Esta stream tenta acumular bytes para fazer a escrita toda ao mesmo tempo para o disto. Pode ser necessário para usar flush
+
+InputStreamReader(InputStream)
+
+BufferedReader(InputStreamReader)
+	BufferedReader.ReadLine();
+
+Streams capazes de enviar objetos inteiros que implementem a interface Serializable
+	ObjectInputStream
+	ObjectOutputStream
+
+________________________________________________________________________________________________________________________
