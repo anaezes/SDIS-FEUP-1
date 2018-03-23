@@ -1,5 +1,8 @@
 package Peer;
 
+import Common.messages.Message;
+import Common.messages.PutChunkMessage;
+import Common.messages.Version;
 import Common.remote.IControl;
 
 import java.io.IOException;
@@ -143,6 +146,7 @@ public class Peer extends Thread implements IControl {
                 e.printStackTrace();
             }
             System.out.println("Control Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
+            // TODO: send stored message after the delay 0-400ms
         }
     }
 
@@ -180,18 +184,19 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    private void sendMessage(String message) {
+    private void sendMessage(Message message) throws IOException {
+        System.err.println("Send message " + message.getMessageType() + "\n");
+        DatagramPacket packet;
 
-        System.err.println("Send message...\n");
-
-        try {
-            byte[] bfr = message.getBytes();
-            DatagramPacket packet = new DatagramPacket(bfr, bfr.length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
-            mcSocket.send(packet);
-        } catch(SocketException e){
-            e.printStackTrace();
-        } catch(IOException e) {
-            e.printStackTrace();
+        switch (message.getMessageType()) {
+            case PUTCHUNK:
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mdbAddr.getAddress()), mdbPort);
+                mdbSocket.send(packet);
+                break;
+            case STORED:
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
+                mdbSocket.send(packet);
+                break;
         }
     }
 
@@ -205,7 +210,8 @@ public class Peer extends Thread implements IControl {
 
     public void checkFileSystem() throws IOException {
         Path path = Paths.get(this.getFileSystemPath());
-        Files.createDirectory(path);
+        if (!Files.exists(path))
+            Files.createDirectory(path);
     }
 
     @Override
@@ -215,13 +221,13 @@ public class Peer extends Thread implements IControl {
         System.out.println(fileContent);
 
         try {
-            Files.write(Paths.get(getFileSystemPath()+"/"+fileName), fileContent.getBytes());
+            //Files.write(Paths.get(getFileSystemPath()+"/"+fileName), fileContent.getBytes());
+            PutChunkMessage message = new PutChunkMessage(new Version(1,0), peerId, fileName.getBytes(), 0, 1, fileContent.getBytes());
+            this.sendMessage(message);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        String request = "Hello world !!! :)";
-        this.sendMessage(request);
         return "Operation backup...";
     }
 

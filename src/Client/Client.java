@@ -2,6 +2,7 @@ package Client;
 
 import Common.remote.IControl;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Files;
@@ -11,7 +12,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 public class Client {
-    private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/client/";
+    private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator + "filesystem" + File.separator + "client" + File.separator;
 
     public enum Commands {
         CMD_BACKUP("BACKUP"),

@@ -48,13 +48,16 @@ public class Message {
      * Therefore, each file can have at most one million chunks. Given that each chunk is 64 KByte,
      * this limits the size of the files to backup to 64 GByte.
      */
-    private byte replicationDeg;
+    private int replicationDeg;
+
+    private byte[] body;
 
     /*
      * Constructor
      */
     public Message(MessageType messageType) {
         this.fileId = new byte[32];
+        setMessageType(messageType);
     }
 
     public MessageType getMessageType() {
@@ -114,12 +117,20 @@ public class Message {
         this.chunkNo = chunkNo;
     }
 
-    public byte getReplicationDeg() {
+    public int getReplicationDeg() {
         return replicationDeg;
     }
 
-    public void setReplicationDeg(byte replicationDeg) {
+    public void setReplicationDeg(int replicationDeg) {
         this.replicationDeg = replicationDeg;
+    }
+
+    public byte[] getBody() {
+        return body;
+    }
+
+    public void setBody(byte[] body) {
+        this.body = body;
     }
 
     public String getHeader() {
@@ -130,6 +141,14 @@ public class Message {
                 this.chunkNo + " " +
                 this.replicationDeg + " " +
                 "\r\n\r\n";
+    }
+
+    public byte[] getBytes() {
+        byte[] header = getHeader().getBytes();
+        byte[] message = new byte[header.length + body.length];
+        System.arraycopy(header, 0, message, 0, header.length);
+        System.arraycopy(body, 0, message, header.length, body.length);
+        return message;
     }
 
     public enum MessageType {
