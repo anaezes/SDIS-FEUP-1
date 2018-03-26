@@ -19,6 +19,8 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.HashSet;
 
 public class Peer extends Thread implements IControl {
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
@@ -40,6 +42,9 @@ public class Peer extends Thread implements IControl {
     private MulticastSocket mdrSocket;
     private InetAddress mdrAddr;
     private int mdrPort;
+
+    //store received ACKs
+    private final HashMap<String, HashSet<Integer>> acks = new HashMap<>();
 
     public static void main(String[] args) {
 
@@ -190,12 +195,10 @@ public class Peer extends Thread implements IControl {
                 System.out.println("Data Channel waiting...");
                 mdbSocket.receive(packet);
 
-                String value = new String(packet.getData(), "UTF-8");
-                String[] parameters = value.split(" ");
-                String[] headerBody = value.split("\r\n\r\n");
+                Message message = Message.parseMessage(packet);
 
-                if(parameters[0].equals("PUTCHUNK"))
-                    handlePutChunkMessage(parameters, headerBody[1]);
+                if(message instanceof PutChunkMessage)
+                    handlePutChunkMessage((PutChunkMessage) message);
 
             } catch (IOException e) {
                 e.printStackTrace();
@@ -228,21 +231,20 @@ public class Peer extends Thread implements IControl {
     * @param parameters
     * @param body
     **/
-    private void handlePutChunkMessage(String[] parameters, String body) throws IOException {
+    private void handlePutChunkMessage(PutChunkMessage message) throws IOException {
 
-        if(Integer.parseInt(parameters[2]) == peerId)
+        if(message.getSenderId() == peerId)
             return;
 
-        Path path = Paths.get(getFileSystemPath() + "/" + parameters[3]);
+        Path path = Paths.get(getFileSystemPath() + "/" + message.getFileId());
         if (!Files.exists(path))
             Files.createDirectory(path);
-        Files.write(Paths.get(path.toString() + "/" + parameters[4]), body.getBytes());
+        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), message.getBody());
 
         //send message STORED chunk
-        String[] version = parameters[1].split("\\.");
-        StoredMessage message = new StoredMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
-                Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
-        sendMessage(message);
+        StoredMessage storedMessage = new StoredMessage(message.getVersion(), peerId, message.getFileId(),
+                message.getChunkNo());
+        sendMessage(storedMessage);
     }
 
 

@@ -1,6 +1,8 @@
 package Common.messages;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.DatagramPacket;
 
 public abstract class Message {
     /*
@@ -106,7 +108,7 @@ public abstract class Message {
     }
 
     public void setFileIdFromString(String fileId) {
-       // this.fileId = new String(fileId).getBytes();
+        // this.fileId = new String(fileId).getBytes();
     }
 
     public int getChunkNo() {
@@ -163,6 +165,33 @@ public abstract class Message {
         public String toString() {
             return type;
         }
+    }
+
+    public static Message parseMessage(DatagramPacket packet) {
+        Message msg = null;
+
+        try {
+            String value = new String(packet.getData(), "UTF-8");
+            String[] parameters = value.split(" ");
+            String[] headerBody = value.split("\r\n\r\n");
+            String[] version = parameters[1].split("\\.");
+
+            switch (parameters[0]) {
+                case "PUTCHUNK":
+                    msg = new PutChunkMessage(new Version(1, 0), Integer.parseInt(parameters[2]), parameters[3],
+                            Integer.parseInt(parameters[4]), Integer.parseInt(parameters[5]), headerBody[1].getBytes());
+                    break;
+                case "STORED":
+                    msg = new StoredMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                            Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
+                    break;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return msg;
     }
 }
 
