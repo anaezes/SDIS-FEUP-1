@@ -6,6 +6,7 @@ import Common.messages.Version;
 import Common.remote.IControl;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +19,7 @@ import java.rmi.server.UnicastRemoteObject;
 
 public class Peer extends Thread implements IControl {
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
+    private final int CHUNKSIZE = 64000;
 
     private final int peerId;
 
@@ -152,18 +154,33 @@ public class Peer extends Thread implements IControl {
 
     public void handleDataChannel() {
 
-        byte[] buffer = new byte[256];
+        byte[] buffer = new byte[CHUNKSIZE];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
         while (true) {
             try {
                 System.out.println("Data Channel waiting...");
-
                 mdbSocket.receive(packet);
+
+                String value = new String(packet.getData(), "UTF-8");
+                String[] parameters = value.split(" ");
+
+                if(parameters[0].equals("PUTCHUNK")) {
+
+                    String[] version = parameters[1].split("\\.");
+                    String[] headerBody = value.split("\r\n\r\n");
+
+                    PutChunkMessage message = new PutChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                            Integer.parseInt(parameters[2]), parameters[3].getBytes(), 0, 1, headerBody[1].getBytes());
+
+                    if(message.getSenderId() != peerId)
+                        Files.write(Paths.get(getFileSystemPath() + "/" + parameters[3]), message.getBody());
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("Data Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
+
         }
     }
 
@@ -215,15 +232,17 @@ public class Peer extends Thread implements IControl {
     }
 
     @Override
-    public String backup(String fileContent, String fileName, int replicationDegree) throws RemoteException {
-
-        System.out.println("RECEBI ::::");
-        System.out.println(fileContent);
+    public String backup(byte[] fileContent, String fileName, int replicationDegree) throws RemoteException {
 
         try {
-            //Files.write(Paths.get(getFileSystemPath()+"/"+fileName), fileContent.getBytes());
-            PutChunkMessage message = new PutChunkMessage(new Version(1,0), peerId, fileName.getBytes(), 0, 1, fileContent.getBytes());
-            this.sendMessage(message);
+            byte fileChunks[][] = getFileChunks(fileContent);
+            //int i = 0;
+           // while(i < fileChunks.length) {
+
+            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileName.getBytes(), 0, 1, fileChunks[0]);
+                this.sendMessage(message);
+               // i++;
+           // }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -244,5 +263,38 @@ public class Peer extends Thread implements IControl {
     @Override
     public String reclaim() throws RemoteException {
         return "Operation reclaim...";
+    }
+
+    /*
+    * Main function for split file in array of chunks
+    **/
+    private byte[][] getFileChunks(byte[] fileContent) {
+        byte buffer[][] = new byte[fileContent.length/CHUNKSIZE+1][CHUNKSIZE];
+
+        int initialPos = 0;
+        int lastPos = CHUNKSIZE;
+
+        for(int i = 0; i < buffer.length; i++) {
+            buffer[i] = getChunk(fileContent, initialPos, lastPos);
+            initialPos += CHUNKSIZE;
+            lastPos += CHUNKSIZE;
+
+        }
+
+        return buffer;
+    }
+
+    /*
+    * Split each chunk
+    **/
+    private byte[] getChunk(byte[] fileContent, int initPos, int lastPos) {
+        byte[] chunk = new byte[CHUNKSIZE];
+
+        int i = 0;
+        while(initPos < lastPos && initPos < fileContent.length ){
+            chunk[i] = fileContent[initPos];
+            i++; initPos++;
+        }
+        return chunk;
     }
 }

@@ -3,6 +3,7 @@ package Client;
 import Common.remote.IControl;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.file.Files;
@@ -80,8 +81,8 @@ public class Client {
         switch (getOperation()) {
             case "BACKUP":
                 String fileContent = new String(Files.readAllBytes(Paths.get(FILES_DIRECTORY+fileName)));
-                System.out.println(fileContent);
-                response = control.backup(fileContent, fileName, replication);
+                //System.out.println(fileContent);
+                response = control.backup(fileContent.getBytes(), fileName, replication);
                 break;
             case "DELETE":
                 response = control.delete();
