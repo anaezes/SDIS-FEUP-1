@@ -262,7 +262,7 @@ public class Peer extends Thread implements IControl {
                 break;
             case STORED:
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
-                mdbSocket.send(packet);
+                mcSocket.send(packet);
                 break;
         }
     }
