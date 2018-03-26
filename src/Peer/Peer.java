@@ -6,8 +6,8 @@ import Common.messages.Version;
 import Common.remote.IControl;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,6 +16,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 
 public class Peer extends Thread implements IControl {
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
@@ -171,7 +174,7 @@ public class Peer extends Thread implements IControl {
                     String[] headerBody = value.split("\r\n\r\n");
 
                     PutChunkMessage message = new PutChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
-                            Integer.parseInt(parameters[2]), parameters[3].getBytes(), 0, 1, headerBody[1].getBytes());
+                            Integer.parseInt(parameters[2]), parameters[3], 0, 1, headerBody[1].getBytes());
 
                     if(message.getSenderId() != peerId)
                         Files.write(Paths.get(getFileSystemPath() + "/" + parameters[3]), message.getBody());
@@ -232,14 +235,14 @@ public class Peer extends Thread implements IControl {
     }
 
     @Override
-    public String backup(byte[] fileContent, String fileName, int replicationDegree) throws RemoteException {
+    public String backup(byte[] fileContent, String fileName, String lastModification, int replicationDegree) throws RemoteException {
 
         try {
             byte fileChunks[][] = getFileChunks(fileContent);
-            //int i = 0;
+            int i = 0;
            // while(i < fileChunks.length) {
 
-            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileName.getBytes(), 0, 1, fileChunks[0]);
+            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, getEncodeHash(fileName+lastModification), 0, 1, fileChunks[i]);
                 this.sendMessage(message);
                // i++;
            // }
@@ -296,5 +299,20 @@ public class Peer extends Thread implements IControl {
             i++; initPos++;
         }
         return chunk;
+    }
+
+    private String getEncodeHash(String text)  {
+        MessageDigest digest = null;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+        byte[] hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
+
+        StringBuilder sb = new StringBuilder(hash.length);
+        for(byte b : hash)
+            sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 }

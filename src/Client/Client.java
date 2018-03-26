@@ -81,8 +81,9 @@ public class Client {
         switch (getOperation()) {
             case "BACKUP":
                 String fileContent = new String(Files.readAllBytes(Paths.get(FILES_DIRECTORY+fileName)));
+                File file = new File(FILES_DIRECTORY+fileName);
                 //System.out.println(fileContent);
-                response = control.backup(fileContent.getBytes(), fileName, replication);
+                response = control.backup(fileContent.getBytes(), fileName, String.valueOf(file.lastModified()), replication);
                 break;
             case "DELETE":
                 response = control.delete();

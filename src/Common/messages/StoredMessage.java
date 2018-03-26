@@ -1,7 +1,7 @@
 package Common.messages;
 
 public class StoredMessage extends Message {
-    public StoredMessage(Version version, int senderId, byte[] fileId, int chunkNo) {
+    public StoredMessage(Version version, int senderId, String fileId, int chunkNo) {
         super(MessageType.STORED);
         this.setVersion(version);
         this.setSenderId(senderId);

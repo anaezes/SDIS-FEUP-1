@@ -27,7 +27,7 @@ public class Message {
      * This is the id of the server that has sent the message. This field is useful in many subprotocols.
      * This is encoded as a variable length sequence of ASCII digits.
      */
-    private byte[] fileId;
+    private String fileId;
 
     /*
      * This is the file identifier for the backup service. As stated above, it is supposed to be obtained by using the
@@ -56,7 +56,7 @@ public class Message {
      * Constructor
      */
     public Message(MessageType messageType) {
-        this.fileId = new byte[32];
+        //this.fileId = new byte[32];
         setMessageType(messageType);
     }
 
@@ -88,25 +88,25 @@ public class Message {
         this.senderId = senderId;
     }
 
-    public byte[] getFileId() {
+    public String getFileId() {
         return fileId;
     }
 
-    public void setFileId(byte[] fileId) {
+    public void setFileId(String fileId) {
         this.fileId = fileId;
     }
 
     public String getFileIdToString() {
-        try {
+      /*  try {
             return new String(fileId, "UTF-8");
         } catch (UnsupportedEncodingException e) {
             System.err.println("Cannot parse FileID to string: " + e.getMessage());
-        }
+        }*/
         return "";
     }
 
     public void setFileIdFromString(String fileId) {
-        this.fileId = new String(fileId).getBytes();
+       // this.fileId = new String(fileId).getBytes();
     }
 
     public int getChunkNo() {
