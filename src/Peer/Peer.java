@@ -77,6 +77,9 @@ public class Peer extends Thread implements IControl {
         peer.start();
     }
 
+    /*
+    * Constructor of Peer
+    * */
     public Peer(String[] args) {
 
         initControlChannel(args[1], args[2]);
@@ -86,10 +89,15 @@ public class Peer extends Thread implements IControl {
         this.peerId = Integer.parseInt(args[0]);
     }
 
-    private void initControlChannel(String address, String Port) {
+    /*
+    * Init channel for control messages
+    * @param address
+    * @param port
+    * */
+    private void initControlChannel(String address, String port) {
         try {
             mcAddr = InetAddress.getByName(address);
-            mcPort = Integer.parseInt(Port);
+            mcPort = Integer.parseInt(port);
 
             mcSocket = new MulticastSocket(mcPort);
             mcSocket.joinGroup(mcAddr);
@@ -101,10 +109,15 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    private void initDataChannel(String address, String Port) {
+    /*
+    * Init channel for data messages
+    * @param address
+    * @param port
+    * */
+    private void initDataChannel(String address, String port) {
         try {
             mdbAddr = InetAddress.getByName(address);
-            mdbPort = Integer.parseInt(Port);
+            mdbPort = Integer.parseInt(port);
 
             mdbSocket = new MulticastSocket(mdbPort);
             mdbSocket.joinGroup(mdbAddr);
@@ -116,10 +129,15 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    private void initRecoveryChannel(String address, String Port) {
+    /*
+    * Init channel for recovery messages
+    * @param address
+    * @param port
+    * */
+    private void initRecoveryChannel(String address, String port) {
         try {
             mdrAddr = InetAddress.getByName(address);
-            mdrPort = Integer.parseInt(Port);
+            mdrPort = Integer.parseInt(port);
 
             mdrSocket = new MulticastSocket(mdrPort);
             mdrSocket.joinGroup(mdrAddr);
@@ -131,13 +149,18 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-
+    /*
+    * Creates threads that wait for messages from channels
+    * */
     public void start() {
         new Thread(() -> handleControlChannel()).start();
         new Thread(() -> handleDataChannel()).start();
         new Thread(() -> handleDataRecoveryChannel()).start();
     }
 
+    /*
+    * Handle control channel messages
+    * */
     public void handleControlChannel() {
 
         byte[] buffer = new byte[256];
@@ -151,10 +174,12 @@ public class Peer extends Thread implements IControl {
                 e.printStackTrace();
             }
             System.out.println("Control Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
-            // TODO: send stored message after the delay 0-400ms
         }
     }
 
+    /*
+    * Handle data channel messages
+    * */
     public void handleDataChannel() {
 
         byte[] buffer = new byte[CHUNKSIZE];
@@ -179,9 +204,30 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-/*
-* Function that creates root directory, if non-existent, and stores the received chunk
-* */
+    /*
+    * Handle data recovery channel messages
+    **/
+    public void handleDataRecoveryChannel() {
+
+        byte[] buffer = new byte[256];
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+
+        while (true) {
+            try {
+                System.out.println("Data Recovery Channel waiting...");
+                mdrSocket.receive(packet);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("Data Recovery Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
+        }
+    }
+
+    /*
+    * Creates root directory, if non-existent, and stores the received chunk
+    * @param parameters
+    * @param body
+    **/
     private void handlePutChunkMessage(String[] parameters, String body) throws IOException {
 
         if(Integer.parseInt(parameters[2]) == peerId)
@@ -199,23 +245,12 @@ public class Peer extends Thread implements IControl {
         sendMessage(message);
     }
 
-    public void handleDataRecoveryChannel() {
 
-        byte[] buffer = new byte[256];
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-        while (true) {
-            try {
-                System.out.println("Data Recovery Channel waiting...");
-
-                mdrSocket.receive(packet);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            System.out.println("Data Recovery Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
-        }
-    }
-
+    /*
+    * Sends message according to its type
+    * @param parameters
+    * @param body
+    **/
     private void sendMessage(Message message) throws IOException {
         System.err.println("Send message " + message.getMessageType() + "\n");
         DatagramPacket packet;
@@ -232,20 +267,39 @@ public class Peer extends Thread implements IControl {
         }
     }
 
+    /*
+    * Get peer id
+    * @return peerId
+    **/
     public int getPeerId() {
         return this.peerId;
     }
 
+    /*
+    * Get filesystem root path
+    * @return path
+    **/
     public String getFileSystemPath() {
         return FILES_DIRECTORY + this.peerId;
     }
 
+    /*
+    * Checks if peer directory exist, if non-existent create.
+    **/
     public void checkFileSystem() throws IOException {
         Path path = Paths.get(this.getFileSystemPath());
         if (!Files.exists(path))
             Files.createDirectory(path);
     }
 
+    /*
+    * Receive file, split it in chunks and send them to the other peers
+    * @param fileContent
+    * @param fileName
+    * @param lastModification
+    * @param replicationDegree
+    * @return name of operation //todo(?)
+    **/
     @Override
     public String backup(byte[] fileContent, String fileName, String lastModification, int replicationDegree) throws RemoteException {
 
@@ -267,21 +321,32 @@ public class Peer extends Thread implements IControl {
 
     @Override
     public String delete() throws RemoteException {
+
+        //todo
+
         return "Operation delete...";
     }
 
     @Override
     public String restore() throws RemoteException {
+
+        //todo
+
         return "Operation restore...";
     }
 
     @Override
     public String reclaim() throws RemoteException {
+
+        //todo
+
         return "Operation reclaim...";
     }
 
     /*
-    * Main function for split file in array of chunks
+    * Split file in array of chunks
+    * @param fileContent
+    * @return array of byte array with all chunks of fileContent
     **/
     private byte[][] getFileChunks(byte[] fileContent) {
         byte buffer[][] = new byte[fileContent.length/CHUNKSIZE+1][CHUNKSIZE];
@@ -293,14 +358,17 @@ public class Peer extends Thread implements IControl {
             buffer[i] = getChunk(fileContent, initialPos, lastPos);
             initialPos += CHUNKSIZE;
             lastPos += CHUNKSIZE;
-
         }
 
         return buffer;
     }
 
     /*
-    * Split each chunk
+    * Get chunk from a given position
+    * @param fileContent
+    * @param iniPos
+    * @param lasPos
+    * @return byte array with chunk
     **/
     private byte[] getChunk(byte[] fileContent, int initPos, int lastPos) {
         byte[] chunk = new byte[CHUNKSIZE];
@@ -313,6 +381,11 @@ public class Peer extends Thread implements IControl {
         return chunk;
     }
 
+    /*
+    * Get file id encoded
+    * @param text
+    * @return text encoded
+    **/
     private String getEncodeHash(String text)  {
         MessageDigest digest = null;
         try {
