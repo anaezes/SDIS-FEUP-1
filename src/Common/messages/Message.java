@@ -2,7 +2,7 @@ package Common.messages;
 
 import java.io.UnsupportedEncodingException;
 
-public class Message {
+public abstract class Message {
     /*
      * This is the type of the message. Each subprotocol specifies its own message types. This field determines the
      * format of the message and what actions its receivers should perform.
@@ -143,13 +143,7 @@ public class Message {
                 "\r\n\r\n";
     }
 
-    public byte[] getBytes() {
-        byte[] header = getHeader().getBytes();
-        byte[] message = new byte[header.length + body.length];
-        System.arraycopy(header, 0, message, 0, header.length);
-        System.arraycopy(body, 0, message, header.length, body.length);
-        return message;
-    }
+    public abstract byte[] getBytes();
 
     public enum MessageType {
         PUTCHUNK("PUTCHUNK"),

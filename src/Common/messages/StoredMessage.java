@@ -8,4 +8,9 @@ public class StoredMessage extends Message {
         this.setFileId(fileId);
         this.setChunkNo(chunkNo);
     }
+
+    @Override
+    public byte[] getBytes() {
+        return getHeader().getBytes();
+    }
 }

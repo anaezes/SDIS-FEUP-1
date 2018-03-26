@@ -2,6 +2,7 @@ package Peer;
 
 import Common.messages.Message;
 import Common.messages.PutChunkMessage;
+import Common.messages.StoredMessage;
 import Common.messages.Version;
 import Common.remote.IControl;
 
@@ -18,7 +19,6 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 
 public class Peer extends Thread implements IControl {
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
@@ -167,24 +167,36 @@ public class Peer extends Thread implements IControl {
 
                 String value = new String(packet.getData(), "UTF-8");
                 String[] parameters = value.split(" ");
+                String[] headerBody = value.split("\r\n\r\n");
 
-                if(parameters[0].equals("PUTCHUNK")) {
-
-                    String[] version = parameters[1].split("\\.");
-                    String[] headerBody = value.split("\r\n\r\n");
-
-                    PutChunkMessage message = new PutChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
-                            Integer.parseInt(parameters[2]), parameters[3], 0, 1, headerBody[1].getBytes());
-
-                    if(message.getSenderId() != peerId)
-                        Files.write(Paths.get(getFileSystemPath() + "/" + parameters[3]), message.getBody());
-                }
+                if(parameters[0].equals("PUTCHUNK"))
+                    handlePutChunkMessage(parameters, headerBody[1]);
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
         }
+    }
+
+/*
+* Function that creates root directory, if non-existent, and stores the received chunk
+* */
+    private void handlePutChunkMessage(String[] parameters, String body) throws IOException {
+
+        if(Integer.parseInt(parameters[2]) == peerId)
+            return;
+
+        Path path = Paths.get(getFileSystemPath() + "/" + parameters[3]);
+        if (!Files.exists(path))
+            Files.createDirectory(path);
+        Files.write(Paths.get(path.toString() + "/" + parameters[4]), body.getBytes());
+
+        //send message STORED chunk
+        String[] version = parameters[1].split("\\.");
+        StoredMessage message = new StoredMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
+        sendMessage(message);
     }
 
     public void handleDataRecoveryChannel() {
@@ -240,12 +252,12 @@ public class Peer extends Thread implements IControl {
         try {
             byte fileChunks[][] = getFileChunks(fileContent);
             int i = 0;
-           // while(i < fileChunks.length) {
+           while(i < fileChunks.length) {
 
-            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, getEncodeHash(fileName+lastModification), 0, 1, fileChunks[i]);
-                this.sendMessage(message);
-               // i++;
-           // }
+            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, getEncodeHash(fileName+lastModification), i, replicationDegree, fileChunks[i]);
+               this.sendMessage(message);
+               i++;
+           }
         } catch (IOException e) {
             e.printStackTrace();
         }
