@@ -19,6 +19,7 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -175,6 +176,14 @@ public class Peer extends Thread implements IControl {
             try {
                 System.out.println("Control Channel waiting...");
                 mcSocket.receive(packet);
+
+                Message message = Message.parseMessage(packet);
+
+                //store sent ack
+                HashSet<Integer> set = acks.getOrDefault(message.getFileId(), new HashSet<>());
+                set.add(message.getChunkNo());
+                acks.putIfAbsent(message.getFileId(), set);
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -307,14 +316,25 @@ public class Peer extends Thread implements IControl {
 
         try {
             byte fileChunks[][] = getFileChunks(fileContent);
+            int chunks[] = new int[fileChunks.length];
             int i = 0;
-           while(i < fileChunks.length) {
+            String fileId = getEncodeHash(fileName+lastModification);
 
-            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, getEncodeHash(fileName+lastModification), i, replicationDegree, fileChunks[i]);
-               this.sendMessage(message);
-               i++;
+           while(i < fileChunks.length) {
+            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, i, replicationDegree, fileChunks[i]);
+            if(i != 0)
+                this.sendMessage(message);
+            chunks[i] = i;
+            i++;
            }
-        } catch (IOException e) {
+
+            sleep(2000);
+
+           //resend chunks if failure
+            if(chunks.length > 0)
+                checkChunksStored(chunks, fileId, fileChunks, replicationDegree);
+
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
 
@@ -401,5 +421,20 @@ public class Peer extends Thread implements IControl {
         for(byte b : hash)
             sb.append(String.format("%02x", b));
         return sb.toString();
+    }
+
+    private void checkChunksStored(int[] chunks, String fileId, byte[][] fileChunks, int replicationDegree) throws IOException {
+        HashSet<Integer> set = acks.get(fileId);
+
+        System.out.println("verify if all is stored...");
+
+        for(int i = 0; i < chunks.length; i++) {
+           if(!set.contains(chunks[i])) {
+               PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, chunks[i], replicationDegree, fileChunks[i]);
+               this.sendMessage(message);
+
+               System.out.println("resend...");
+           }
+        }
     }
 }
