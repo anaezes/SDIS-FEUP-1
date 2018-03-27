@@ -185,6 +185,10 @@ public abstract class Message {
                     msg = new StoredMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
                             Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
                     break;
+                case "DELETE":
+                    msg = new DeleteMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                            Integer.parseInt(parameters[2]), parameters[3]);
+                    break;
             }
 
         } catch (IOException e) {
