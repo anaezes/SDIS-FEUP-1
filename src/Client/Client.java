@@ -57,10 +57,10 @@ public class Client {
             fileName = args[2];
             replication = Integer.parseInt(args[3]);
         }
-        else if(operation.equals(Commands.CMD_DELETE) || operation.equals(Commands.CMD_RESTORE)) {
+        else if(operation.equals(Commands.CMD_DELETE.toString()) || operation.equals(Commands.CMD_RESTORE.toString())) {
             fileName = args[2];
         }
-        else if(operation.equals(Commands.CMD_RECLAIM)) {
+        else if(operation.equals(Commands.CMD_RECLAIM.toString())) {
             diskSpace = args[2];
         }
 
@@ -77,16 +77,18 @@ public class Client {
     private void makeRequest() throws IOException {
 
         String response;
+        File file = new File(FILES_DIRECTORY+fileName);
+
+        if(!file.exists())
+            throw new IOException();
 
         switch (getOperation()) {
             case "BACKUP":
                 String fileContent = new String(Files.readAllBytes(Paths.get(FILES_DIRECTORY+fileName)));
-                File file = new File(FILES_DIRECTORY+fileName);
-                //System.out.println(fileContent);
                 response = control.backup(fileContent.getBytes(), fileName, String.valueOf(file.lastModified()), replication);
                 break;
             case "DELETE":
-                response = control.delete();
+                response = control.delete(fileName, String.valueOf(file.lastModified()));
                 break;
             case "RESTORE":
                 response = control.restore();

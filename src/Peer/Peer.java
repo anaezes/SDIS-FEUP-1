@@ -1,17 +1,13 @@
 package Peer;
 
-import Common.messages.Message;
-import Common.messages.PutChunkMessage;
-import Common.messages.StoredMessage;
-import Common.messages.Version;
+import Common.messages.*;
 import Common.remote.IControl;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -19,11 +15,11 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
 public class Peer extends Thread implements IControl {
+    private static final int NUMBER_TRIES = 3;
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
     private final int CHUNKSIZE = 64000;
 
@@ -83,9 +79,9 @@ public class Peer extends Thread implements IControl {
         peer.start();
     }
 
-    /*
+    /**
     * Constructor of Peer
-    * */
+    */
     public Peer(String[] args) {
 
         initControlChannel(args[1], args[2]);
@@ -95,11 +91,11 @@ public class Peer extends Thread implements IControl {
         this.peerId = Integer.parseInt(args[0]);
     }
 
-    /*
+    /**
     * Init channel for control messages
     * @param address
     * @param port
-    * */
+    */
     private void initControlChannel(String address, String port) {
         try {
             mcAddr = InetAddress.getByName(address);
@@ -115,11 +111,11 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    /*
+    /**
     * Init channel for data messages
     * @param address
     * @param port
-    * */
+    */
     private void initDataChannel(String address, String port) {
         try {
             mdbAddr = InetAddress.getByName(address);
@@ -135,11 +131,11 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    /*
+    /**
     * Init channel for recovery messages
     * @param address
     * @param port
-    * */
+    */
     private void initRecoveryChannel(String address, String port) {
         try {
             mdrAddr = InetAddress.getByName(address);
@@ -164,9 +160,9 @@ public class Peer extends Thread implements IControl {
         new Thread(() -> handleDataRecoveryChannel()).start();
     }
 
-    /*
+    /**
     * Handle control channel messages
-    * */
+    */
     public void handleControlChannel() {
 
         byte[] buffer = new byte[256];
@@ -174,26 +170,60 @@ public class Peer extends Thread implements IControl {
 
         while (true) {
             try {
-                System.out.println("Control Channel waiting...");
                 mcSocket.receive(packet);
 
                 Message message = Message.parseMessage(packet);
 
-                //store sent ack
-                HashSet<Integer> set = acks.getOrDefault(message.getFileId(), new HashSet<>());
-                set.add(message.getChunkNo());
-                acks.putIfAbsent(message.getFileId(), set);
+                System.out.println("\nReceived message on MC Channel: " + message.getMessageType() + "\n");
+
+                if(message instanceof StoredMessage) {
+                    //store sent ack
+                    HashSet<Integer> set = acks.getOrDefault(message.getFileId(), new HashSet<>());
+                    set.add(message.getChunkNo());
+                    acks.putIfAbsent(message.getFileId(), set);
+                }
+                else if(message instanceof DeleteMessage){
+
+                    handleDeleteMessage((DeleteMessage) message);
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("Control Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
         }
     }
 
-    /*
+    private void handleDeleteMessage(DeleteMessage message) throws IOException {
+        if(message.getSenderId() == peerId)
+            return;
+
+        File file = new File(getFileSystemPath() + "/" + message.getFileId());
+
+        if(!file.exists())
+            return;
+
+        if(!deleteFile(file))
+            System.out.println("Error to delete a file! ");
+    }
+
+    private boolean deleteFile(File file) {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            for (int i = 0; i < children.length; i++) {
+                boolean success = deleteFile(children[i]);
+                if (!success) {
+                    return false;
+                }
+            }
+        }
+
+        return file.delete();
+    }
+
+
+    /**
     * Handle data channel messages
-    * */
+    */
     public void handleDataChannel() {
 
         byte[] buffer = new byte[CHUNKSIZE];
@@ -201,10 +231,10 @@ public class Peer extends Thread implements IControl {
 
         while (true) {
             try {
-                System.out.println("Data Channel waiting...");
                 mdbSocket.receive(packet);
 
                 Message message = Message.parseMessage(packet);
+                System.out.println("\nReceived message on MDB Channel: " + message.getMessageType() + "\n");
 
                 if(message instanceof PutChunkMessage)
                     handlePutChunkMessage((PutChunkMessage) message);
@@ -216,9 +246,9 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    /*
+    /**
     * Handle data recovery channel messages
-    **/
+    */
     public void handleDataRecoveryChannel() {
 
         byte[] buffer = new byte[256];
@@ -226,8 +256,9 @@ public class Peer extends Thread implements IControl {
 
         while (true) {
             try {
-                System.out.println("Data Recovery Channel waiting...");
                 mdrSocket.receive(packet);
+               // System.out.println("\nReceived message on MC Channel: " + message.getMessageType() + "\n");
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -235,11 +266,10 @@ public class Peer extends Thread implements IControl {
         }
     }
 
-    /*
+    /**
     * Creates root directory, if non-existent, and stores the received chunk
-    * @param parameters
-    * @param body
-    **/
+    * @param message
+    */
     private void handlePutChunkMessage(PutChunkMessage message) throws IOException {
 
         if(message.getSenderId() == peerId)
@@ -257,13 +287,12 @@ public class Peer extends Thread implements IControl {
     }
 
 
-    /*
+    /**
     * Sends message according to its type
-    * @param parameters
-    * @param body
-    **/
+    * @param message
+    */
     private void sendMessage(Message message) throws IOException {
-        System.err.println("Send message " + message.getMessageType() + "\n");
+        System.err.println("\nSend message " + message.getMessageType() + "\n");
         DatagramPacket packet;
 
         switch (message.getMessageType()) {
@@ -275,42 +304,49 @@ public class Peer extends Thread implements IControl {
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
                 mcSocket.send(packet);
                 break;
+            case DELETE:
+                //3 times
+                for(int i = 0; i < NUMBER_TRIES; i++) {
+                    packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
+                    mcSocket.send(packet);
+                }
+                break;
         }
     }
 
-    /*
+    /**
     * Get peer id
     * @return peerId
-    **/
+    */
     public int getPeerId() {
         return this.peerId;
     }
 
-    /*
+    /**
     * Get filesystem root path
     * @return path
-    **/
+    */
     public String getFileSystemPath() {
         return FILES_DIRECTORY + this.peerId;
     }
 
-    /*
+    /**
     * Checks if peer directory exist, if non-existent create.
-    **/
+    */
     public void checkFileSystem() throws IOException {
         Path path = Paths.get(this.getFileSystemPath());
         if (!Files.exists(path))
             Files.createDirectory(path);
     }
 
-    /*
+    /**
     * Receive file, split it in chunks and send them to the other peers
     * @param fileContent
     * @param fileName
     * @param lastModification
     * @param replicationDegree
     * @return name of operation //todo(?)
-    **/
+    */
     @Override
     public String backup(byte[] fileContent, String fileName, String lastModification, int replicationDegree) throws RemoteException {
 
@@ -322,8 +358,7 @@ public class Peer extends Thread implements IControl {
 
            while(i < fileChunks.length) {
             PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, i, replicationDegree, fileChunks[i]);
-            if(i != 0)
-                this.sendMessage(message);
+            this.sendMessage(message);
             chunks[i] = i;
             i++;
            }
@@ -342,9 +377,15 @@ public class Peer extends Thread implements IControl {
     }
 
     @Override
-    public String delete() throws RemoteException {
+    public String delete(String fileName, String lastModification) throws RemoteException {
 
-        //todo
+        try {
+            String fileId = getEncodeHash(fileName+lastModification);
+            DeleteMessage message = new DeleteMessage(new Version(1, 0), peerId, fileId);
+            this.sendMessage(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         return "Operation delete...";
     }
@@ -365,11 +406,11 @@ public class Peer extends Thread implements IControl {
         return "Operation reclaim...";
     }
 
-    /*
+    /**
     * Split file in array of chunks
     * @param fileContent
     * @return array of byte array with all chunks of fileContent
-    **/
+    */
     private byte[][] getFileChunks(byte[] fileContent) {
         byte buffer[][] = new byte[fileContent.length/CHUNKSIZE+1][CHUNKSIZE];
 
@@ -385,13 +426,13 @@ public class Peer extends Thread implements IControl {
         return buffer;
     }
 
-    /*
+    /**
     * Get chunk from a given position
     * @param fileContent
-    * @param iniPos
-    * @param lasPos
+    * @param initPos
+    * @param lastPos
     * @return byte array with chunk
-    **/
+    */
     private byte[] getChunk(byte[] fileContent, int initPos, int lastPos) {
         byte[] chunk = new byte[CHUNKSIZE];
 
@@ -403,11 +444,11 @@ public class Peer extends Thread implements IControl {
         return chunk;
     }
 
-    /*
+    /**
     * Get file id encoded
     * @param text
     * @return text encoded
-    **/
+    */
     private String getEncodeHash(String text)  {
         MessageDigest digest = null;
         try {
