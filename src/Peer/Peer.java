@@ -351,29 +351,43 @@ public class Peer extends Thread implements IControl {
     public String backup(byte[] fileContent, String fileName, String lastModification, int replicationDegree) throws RemoteException {
 
         try {
-            byte fileChunks[][] = getFileChunks(fileContent);
-            int chunks[] = new int[fileChunks.length];
-            int i = 0;
-            String fileId = getEncodeHash(fileName+lastModification);
-
-           while(i < fileChunks.length) {
-            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, i, replicationDegree, fileChunks[i]);
-            this.sendMessage(message);
-            chunks[i] = i;
-            i++;
-           }
-
-            sleep(2000);
-
-           //resend chunks if failure
-            if(chunks.length > 0)
-                checkChunksStored(chunks, fileId, fileChunks, replicationDegree);
-
+            int timeout = 200;
+            int numberOfTries = 3;
+            backupHandle(fileContent, fileName, lastModification, replicationDegree, timeout, numberOfTries);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
 
         return "Operation backup...";
+    }
+
+    private void backupHandle(byte[] fileContent, String fileName, String lastModification,
+                              int replicationDegree, int timeout, int numberOfTries) throws IOException, InterruptedException {
+
+        if(numberOfTries == 0)
+            return;
+
+        byte fileChunks[][] = getFileChunks(fileContent);
+        int chunks[] = new int[fileChunks.length];
+        int i = 0;
+        String fileId = getEncodeHash(fileName+lastModification);
+
+        while(i < fileChunks.length) {
+            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, i, replicationDegree, fileChunks[i]);
+            this.sendMessage(message);
+            chunks[i] = i;
+            i++;
+        }
+
+        sleep(timeout);
+
+        timeout = timeout*2;
+        numberOfTries--;
+
+        //resend chunks if failure
+        if(chunks.length < replicationDegree) {
+            backupHandle(fileContent, fileName, lastModification, replicationDegree, timeout, numberOfTries);
+        }
     }
 
     @Override
