@@ -20,7 +20,11 @@ import java.util.HashSet;
 
 public class Peer extends Thread implements IControl {
     private static final int NUMBER_TRIES = 3;
-    private final String FILES_DIRECTORY = System.getProperty("user.dir") + "/filesystem/peers/peer";
+    private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator +"filesystem" +File.separator
+            + "peers" + File.separator +"peer";
+    private final String CLIENT_DIRECTORY = System.getProperty("user.dir") + File.separator + "filesystem" +
+            File.separator + "client" + File.separator;
+
     private final int CHUNKSIZE = 64000;
 
     private final int peerId;
@@ -341,19 +345,18 @@ public class Peer extends Thread implements IControl {
 
     /**
     * Receive file, split it in chunks and send them to the other peers
-    * @param fileContent
-    * @param fileName
-    * @param lastModification
+    * @param file
     * @param replicationDegree
     * @return name of operation //todo(?)
     */
     @Override
-    public String backup(byte[] fileContent, String fileName, String lastModification, int replicationDegree) throws RemoteException {
+    public String backup(File file, int replicationDegree) throws RemoteException {
 
         try {
+            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY+file.getName())));
             int timeout = 200;
             int numberOfTries = 3;
-            backupHandle(fileContent, fileName, lastModification, replicationDegree, timeout, numberOfTries);
+            backupHandle(fileContent.getBytes(),  file.getName(),  Long.toString(file.lastModified()), replicationDegree, timeout, numberOfTries);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
@@ -391,10 +394,10 @@ public class Peer extends Thread implements IControl {
     }
 
     @Override
-    public String delete(String fileName, String lastModification) throws RemoteException {
+    public String delete(File file) throws RemoteException {
 
         try {
-            String fileId = getEncodeHash(fileName+lastModification);
+            String fileId = getEncodeHash(file.getName()+file.lastModified());
             DeleteMessage message = new DeleteMessage(new Version(1, 0), peerId, fileId);
             this.sendMessage(message);
         } catch (IOException e) {
@@ -405,7 +408,7 @@ public class Peer extends Thread implements IControl {
     }
 
     @Override
-    public String restore() throws RemoteException {
+    public String restore(File file) throws RemoteException {
 
         //todo
 
