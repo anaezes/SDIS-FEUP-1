@@ -20,7 +20,7 @@ import java.util.HashSet;
 
 public class Peer extends Thread implements IControl {
     private static final int NUMBER_TRIES = 3;
-    private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator +"filesystem" +File.separator
+    private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator +"filesystem" + File.separator
             + "peers" + File.separator +"peer";
     private final String CLIENT_DIRECTORY = System.getProperty("user.dir") + File.separator + "filesystem" +
             File.separator + "client" + File.separator;
@@ -46,6 +46,10 @@ public class Peer extends Thread implements IControl {
 
     //store received ACKs
     private final HashMap<String, HashSet<Integer>> acks = new HashMap<>();
+
+    //store the restore chunks
+    private final HashMap<String, HashMap<Integer, byte[]>> restore = new HashMap<>();
+
 
     public static void main(String[] args) {
 
@@ -410,9 +414,41 @@ public class Peer extends Thread implements IControl {
     @Override
     public String restore(File file) throws RemoteException {
 
-        //todo
+        try {
+            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY+file.getName())));
+
+            //  calcular quantos chunks serão necessários
+            int noChunks = fileContent.getBytes().length/CHUNKSIZE+1;
+
+            // todo pedir sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
+            getAllChunksFile(file, noChunks);
+
+            // todo restore file
+            restoreFile();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         return "Operation restore...";
+    }
+
+    private void restoreFile() {
+
+    }
+
+    private void getAllChunksFile(File file, int noChunks) throws IOException {
+
+        String fileId = getEncodeHash(file.getName()+file.lastModified());
+        int numberOfTries = 0;
+
+        while(restore.get(fileId).size() < noChunks && numberOfTries < NUMBER_TRIES) {
+                for(int i = 0; i < noChunks; i ++){
+                    GetChunkMessage message = new GetChunkMessage(new Version(1, 0), peerId, fileId, i);
+                    this.sendMessage(message);
+                }
+                numberOfTries++;
+        }
     }
 
     @Override
