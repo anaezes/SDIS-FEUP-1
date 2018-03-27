@@ -189,6 +189,14 @@ public abstract class Message {
                     msg = new DeleteMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
                             Integer.parseInt(parameters[2]), parameters[3]);
                     break;
+                case "CHUNK":
+                    msg = new ChunkMessage(new Version(1, 0), Integer.parseInt(parameters[2]), parameters[3],
+                            Integer.parseInt(parameters[4]), headerBody[1].getBytes());
+                    break;
+                case "GETCHUNK":
+                    msg = new GetChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                            Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
+                    break;
             }
 
         } catch (IOException e) {
