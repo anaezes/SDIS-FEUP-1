@@ -2,7 +2,7 @@ package Common.messages;
 
 public class GetChunkMessage extends Message {
     public GetChunkMessage(Version version, int senderId, String fileId, int chunkNo) {
-        super(MessageType.PUTCHUNK);
+        super(MessageType.GETCHUNK);
         this.setVersion(version);
         this.setSenderId(senderId);
         this.setFileId(fileId);

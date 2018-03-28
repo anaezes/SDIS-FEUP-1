@@ -4,6 +4,8 @@ import Common.messages.*;
 import Common.remote.IControl;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
@@ -15,8 +17,7 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 
 public class Peer extends Thread implements IControl {
     private static final int NUMBER_TRIES = 3;
@@ -49,6 +50,10 @@ public class Peer extends Thread implements IControl {
 
     //store the restore chunks
     private final HashMap<String, HashMap<Integer, byte[]>> restore = new HashMap<>();
+
+    //store the flags of chunks sent
+    private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
+
 
 
     public static void main(String[] args) {
@@ -191,21 +196,50 @@ public class Peer extends Thread implements IControl {
                     acks.putIfAbsent(message.getFileId(), set);
                 }
                 else if(message instanceof DeleteMessage){
-
                     handleDeleteMessage((DeleteMessage) message);
                 }
+                else if(message instanceof GetChunkMessage){
+                    handleGetChunkMessage((GetChunkMessage) message);
+                }
 
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void handleGetChunkMessage(GetChunkMessage message) throws InterruptedException, IOException {
+
+        // tenho ? -> obtenho o chunk se não aborta
+        File file = new File(getFileSystemPath() + File.separator + message.getFileId());
+        if(!file.exists())
+            return;
+
+        File chunk = new File(getFileSystemPath() + File.separator + message.getFileId() + File.separator + message.getChunkNo());
+        if(!chunk.exists())
+            return;
+
+        // calcular tempo de espera (random entre 0 e 400ms)
+        sleep((long )(Math.random() * 400));
+
+        // verificar se entretanto já alguem enviou
+        // se sim, aborta, se não envio
+        if(chunksSent.containsValue(message.getFileId()))
+            if(chunksSent.get(message.getFileId()).contains(message.getChunkNo()))
+                return;
+
+        //send message STORED chunk
+        ChunkMessage chunkMessage = new ChunkMessage(new Version(1, 0), peerId, message.getFileId(),
+                message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
+        sendMessage(chunkMessage);
+
     }
 
     private void handleDeleteMessage(DeleteMessage message) throws IOException {
         if(message.getSenderId() == peerId)
             return;
 
-        File file = new File(getFileSystemPath() + "/" + message.getFileId());
+        File file = new File(getFileSystemPath() + File.separator + message.getFileId());
 
         if(!file.exists())
             return;
@@ -265,12 +299,28 @@ public class Peer extends Thread implements IControl {
         while (true) {
             try {
                 mdrSocket.receive(packet);
-               // System.out.println("\nReceived message on MC Channel: " + message.getMessageType() + "\n");
+
+                Message message = Message.parseMessage(packet);
+
+                System.out.println("\nReceived message on MDR Channel: " + message.getMessageType() + "\n");
+
+                //outros peers
+                if(message instanceof ChunkMessage) {
+                    //other peer (?) - > todo verificar se está a funcionar ok
+                    HashSet<Integer> set = chunksSent.getOrDefault(message.getFileId(), new HashSet<>());
+                    set.add(message.getChunkNo());
+                    chunksSent.putIfAbsent(message.getFileId(), set);
+
+                    //store chunk content - main peer (?) -> está a funcionar !
+                    HashMap<Integer, byte[]> chunk = restore.getOrDefault(message.getFileId(), new HashMap<>());
+                    chunk.put(message.getChunkNo(), message.getBody());
+                    restore.putIfAbsent(message.getFileId(), chunk);
+
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("Data Recovery Channel received: "+ new String(packet.getData(), 0, packet.getLength()));
         }
     }
 
@@ -319,7 +369,18 @@ public class Peer extends Thread implements IControl {
                     mcSocket.send(packet);
                 }
                 break;
+            case CHUNK:
+                System.out.println("VOU MANDAR CHUNK");
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mdrAddr.getAddress()), mdrPort);
+                mdrSocket.send(packet);
+                break;
+            case GETCHUNK:
+                System.out.println("VOU PEDIR CHUNK");
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
+                mcSocket.send(packet);
+                break;
         }
+
     }
 
     /**
@@ -420,35 +481,50 @@ public class Peer extends Thread implements IControl {
             //  calcular quantos chunks serão necessários
             int noChunks = fileContent.getBytes().length/CHUNKSIZE+1;
 
-            // todo pedir sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
+            // pede sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
             getAllChunksFile(file, noChunks);
 
-            // todo restore file
-            restoreFile();
+            //restore file
+            System.out.println("Restore!!!!!!!!!!!!!!");
+            restoreFile(file, fileContent.getBytes().length);
 
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
 
         return "Operation restore...";
     }
 
-    private void restoreFile() {
-
-    }
-
-    private void getAllChunksFile(File file, int noChunks) throws IOException {
+    private void restoreFile(File file, int size) throws IOException {
 
         String fileId = getEncodeHash(file.getName()+file.lastModified());
-        int numberOfTries = 0;
+        Set entrySet = restore.get(fileId).entrySet();
+        Iterator it = entrySet.iterator();
 
-        while(restore.get(fileId).size() < noChunks && numberOfTries < NUMBER_TRIES) {
-                for(int i = 0; i < noChunks; i ++){
-                    GetChunkMessage message = new GetChunkMessage(new Version(1, 0), peerId, fileId, i);
-                    this.sendMessage(message);
-                }
-                numberOfTries++;
+        // Iterate through HashMap entries(Key-Value pairs)
+        FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY+file.getName(), true);
+
+        while(it.hasNext()){
+            Map.Entry content = (Map.Entry)it.next();
+            fos.write((byte[]) content.getValue());
         }
+
+        fos.close();
+    }
+
+    private void getAllChunksFile(File file, int noChunks) throws IOException, InterruptedException {
+
+        String fileId = getEncodeHash(file.getName()+file.lastModified());
+
+         for(int i = 0; i < noChunks; i ++){
+             GetChunkMessage message = new GetChunkMessage(new Version(1, 0), peerId, fileId, i);
+             this.sendMessage(message);
+         }
+
+         sleep(400);
+
+        if(restore.get(fileId).size() < noChunks)
+            getAllChunksFile(file, noChunks);
     }
 
     @Override
