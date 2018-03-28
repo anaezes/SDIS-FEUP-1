@@ -91,32 +91,27 @@ public class MessageUtils {
 
         switch (message.getMessageType()) {
             case PUTCHUNK:
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(
-                        peer.getMdbSocket().getInetAddress().getAddress()), peer.getMdbSocket().getPort());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdbSocket().getLocalSocketAddress());
                 peer.getMdbSocket().send(packet);
                 break;
             case STORED:
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(
-                        peer.getMcSocket().getInetAddress().getAddress()), peer.getMcSocket().getPort());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcSocket().getLocalSocketAddress());
                 peer.getMcSocket().send(packet);
                 break;
             case DELETE:
                 for(int i = 0; i < NUMBER_TRIES; i++) {
-                    packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(
-                            peer.getMcSocket().getInetAddress().getAddress()), peer.getMcSocket().getPort());
+                    packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcSocket().getLocalSocketAddress());
                     peer.getMcSocket().send(packet);
                 }
                 break;
             case CHUNK:
                 System.out.println("VOU MANDAR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(
-                        peer.getMdrSocket().getInetAddress().getAddress()), peer.getMdrSocket().getPort());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdrSocket().getLocalSocketAddress());
                 peer.getMdrSocket().send(packet);
                 break;
             case GETCHUNK:
                 System.out.println("VOU PEDIR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(
-                        peer.getMcSocket().getInetAddress().getAddress()), peer.getMcSocket().getPort());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcSocket().getLocalSocketAddress());
                 peer.getMcSocket().send(packet);
                 break;
         }
