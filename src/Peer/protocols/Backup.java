@@ -34,8 +34,8 @@ public class Backup {
         }
     }
 
-    private void handle(byte[] fileContent, String fileName, String lastModification,
-                              int replicationDegree, int timeout, int numberOfTries) throws IOException, InterruptedException {
+    private void handle(byte[] fileContent, String fileName, String lastModification,int replicationDegree,
+                        int timeout, int numberOfTries) throws IOException, InterruptedException {
 
         if(numberOfTries == 0)
             return;

@@ -91,7 +91,7 @@ public class MessageUtils {
 
         switch (message.getMessageType()) {
             case PUTCHUNK:
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdbSocket().getLocalSocketAddress());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdbAddr(), peer.getMdbPort());
                 peer.getMdbSocket().send(packet);
                 break;
             case STORED:

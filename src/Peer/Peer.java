@@ -137,7 +137,7 @@ public class Peer {
         try {
             mdbAddr = InetAddress.getByName(address);
             mdbPort = Integer.parseInt(port);
-
+            Logger.getGlobal().info("Initializing data channel at " + mdbAddr + ":" + mdbPort + "...");
             mdbSocket = new MulticastSocket(mdbPort);
             mdbSocket.joinGroup(mdbAddr);
 
@@ -212,7 +212,7 @@ public class Peer {
     * Creates threads that wait for messages from channels
     * */
     public void start() {
-        Logger.getGlobal().info("Starting protocols channel");
+        Logger.getGlobal().info("Starting control channel");
         CommunicationChannels.getControlChannelThread().start();
 
         Logger.getGlobal().info("Starting data channel");
@@ -247,6 +247,30 @@ public class Peer {
 
     public HashMap<String, HashMap<Integer, byte[]>> getRestore() {
         return restore;
+    }
+
+    public InetAddress getMcAddr() {
+        return mcAddr;
+    }
+
+    public int getMcPort() {
+        return mcPort;
+    }
+
+    public InetAddress getMdbAddr() {
+        return mdbAddr;
+    }
+
+    public int getMdbPort() {
+        return mdbPort;
+    }
+
+    public InetAddress getMdrAddr() {
+        return mdrAddr;
+    }
+
+    public int getMdrPort() {
+        return mdrPort;
     }
 
     /**
