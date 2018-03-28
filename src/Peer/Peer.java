@@ -2,14 +2,15 @@ package Peer;
 
 import Common.messages.*;
 import Common.remote.IControl;
+import Peer.protocols.Controller;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -18,8 +19,12 @@ import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class Peer extends Thread implements IControl {
+import static java.lang.Thread.sleep;
+
+public class Peer {
     private static final int NUMBER_TRIES = 3;
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator +"filesystem" + File.separator
             + "peers" + File.separator +"peer";
@@ -54,62 +59,66 @@ public class Peer extends Thread implements IControl {
     //store the flags of chunks sent
     private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
 
+    // Contains communication channel handlers
+    public final CommunicationChannels CommunicationChannels;
 
+    // Contains handlers to process messages
+    public final MessageUtils MessageUtils;
+
+    // Contains handlers to all implemented protocols
+    public final Controller ProtocolController;
 
     public static void main(String[] args) {
-
         if (args.length < 3) {
             System.out.println("Usage: java Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT>");
             return;
         }
-
-        Peer peer = new Peer(args);
-        System.out.println("Peer Id: " + peer.getPeerId());
+        Logger.getGlobal().setLevel(Level.ALL);
 
         try {
-            //verify if this peer base directory exists. If not creates it.
-            peer.checkFileSystem();
-
-            Registry registry;
-            // Bind the remote object's stub in the registry
-            try {
-                registry = LocateRegistry.createRegistry(1099);
-            } catch (ExportException e) {
-                if (e.toString().contains("Port already in use")) {
-                    registry = LocateRegistry.getRegistry();
-                } else {
-                    throw e;
-                }
-            }
-            IControl control = (IControl) UnicastRemoteObject.exportObject(peer, 0);
-            registry.bind( "peer" + peer.getPeerId(), control);
-            System.err.println("Server ready\n");
-        } catch (Exception e) {
-            System.err.println("Server exception: " + e.toString());
+            Peer peer = new Peer(args);
+            Logger.getGlobal().info("Peer created with ID: " + peer.getPeerId());
+            peer.start();
+        } catch (IOException e) {
+            Logger.getGlobal().severe("Cannot create peer, aborting!");
+            Logger.getGlobal().severe(e.getLocalizedMessage());
             e.printStackTrace();
         }
-
-        peer.start();
     }
 
     /**
     * Constructor of Peer
     */
-    public Peer(String[] args) {
+    public Peer(String[] args) throws IOException {
+        Logger.getGlobal().info("Creating Peer...");
+        this.peerId = Integer.parseInt(args[0]);
 
+        // Verify if this peer base directory exists. If not creates it.
+        initFilesystem();
+
+        // Creates communication channel handlers
+        this.CommunicationChannels = new CommunicationChannels(this, CHUNKSIZE);
+
+        // Creates message handlers
+        this.MessageUtils = new MessageUtils(this, NUMBER_TRIES);
+
+        // Creates new protocol controller
+        this.ProtocolController = new Controller(this, CLIENT_DIRECTORY, CHUNKSIZE);
+
+        // Initiates communication channels
         initControlChannel(args[1], args[2]);
         initDataChannel(args[3], args[4]);
         initRecoveryChannel(args[5], args[6]);
-
-        this.peerId = Integer.parseInt(args[0]);
+        initRMIChannel(1099);
     }
 
     /**
-    * Init channel for control messages
+    * Init channel for protocols messages
     * @param address
     * @param port
     */
     private void initControlChannel(String address, String port) {
+        Logger.getGlobal().info("Initializing protocols channel at " + address + ":" + port + "...");
         try {
             mcAddr = InetAddress.getByName(address);
             mcPort = Integer.parseInt(port);
@@ -130,6 +139,7 @@ public class Peer extends Thread implements IControl {
     * @param port
     */
     private void initDataChannel(String address, String port) {
+        Logger.getGlobal().info("Initializing data channel at " + address + ":" + port + "...");
         try {
             mdbAddr = InetAddress.getByName(address);
             mdbPort = Integer.parseInt(port);
@@ -150,6 +160,7 @@ public class Peer extends Thread implements IControl {
     * @param port
     */
     private void initRecoveryChannel(String address, String port) {
+        Logger.getGlobal().info("Initializing recovery channel at " + address + ":" + port + "...");
         try {
             mdrAddr = InetAddress.getByName(address);
             mdrPort = Integer.parseInt(port);
@@ -164,223 +175,84 @@ public class Peer extends Thread implements IControl {
         }
     }
 
+    /**
+     * Init RMI channel for communication with client
+     * @param port
+     * @throws RemoteException
+     */
+    private void initRMIChannel(int port) throws RemoteException {
+        Logger.getGlobal().info("Initializing RMI channel at port " + port + "...");
+        Registry registry;
+
+        try {
+            registry = LocateRegistry.createRegistry(port);
+        } catch (ExportException e) {
+            if (e.toString().contains("Port already in use")) {
+                registry = LocateRegistry.getRegistry();
+            } else {
+                throw e;
+            }
+        }
+
+        IControl control = (IControl) UnicastRemoteObject.exportObject(ProtocolController, 0);
+        try {
+            // Bind the remote object's stub in the registry
+            registry.bind( "peer" + this.getPeerId(), control);
+        } catch (AlreadyBoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Checks if peer directory exist, if non-existent create.
+     */
+    public void initFilesystem() throws IOException {
+        Logger.getGlobal().info("Initializing peer filesystem:\n" + this.getFileSystemPath());
+        Path path = Paths.get(this.getFileSystemPath());
+        if (!Files.exists(path))
+            Files.createDirectory(path);
+    }
+
+
     /*
     * Creates threads that wait for messages from channels
     * */
     public void start() {
-        new Thread(() -> handleControlChannel()).start();
-        new Thread(() -> handleDataChannel()).start();
-        new Thread(() -> handleDataRecoveryChannel()).start();
+        Logger.getGlobal().info("Starting protocols channel");
+        CommunicationChannels.getControlChannelThread().start();
+
+        Logger.getGlobal().info("Starting data channel");
+        CommunicationChannels.getDataChannelThread().start();
+
+        Logger.getGlobal().info("Starting data recovery channel");;
+        CommunicationChannels.getRecoveryChannelThread().start();
     }
 
-    /**
-    * Handle control channel messages
-    */
-    public void handleControlChannel() {
-
-        byte[] buffer = new byte[256];
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-        while (true) {
-            try {
-                mcSocket.receive(packet);
-
-                Message message = Message.parseMessage(packet);
-
-                System.out.println("\nReceived message on MC Channel: " + message.getMessageType() + "\n");
-
-                if(message instanceof StoredMessage) {
-                    //store sent ack
-                    HashSet<Integer> set = acks.getOrDefault(message.getFileId(), new HashSet<>());
-                    set.add(message.getChunkNo());
-                    acks.putIfAbsent(message.getFileId(), set);
-                }
-                else if(message instanceof DeleteMessage){
-                    handleDeleteMessage((DeleteMessage) message);
-                }
-                else if(message instanceof GetChunkMessage){
-                    handleGetChunkMessage((GetChunkMessage) message);
-                }
-
-            } catch (IOException | InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+    /*
+     * Getters for Peer variables
+     */
+    public HashMap<String, HashSet<Integer>> getAcks() {
+        return acks;
     }
 
-    private void handleGetChunkMessage(GetChunkMessage message) throws InterruptedException, IOException {
-
-        // tenho ? -> obtenho o chunk se não aborta
-        File file = new File(getFileSystemPath() + File.separator + message.getFileId());
-        if(!file.exists())
-            return;
-
-        File chunk = new File(getFileSystemPath() + File.separator + message.getFileId() + File.separator + message.getChunkNo());
-        if(!chunk.exists())
-            return;
-
-        // calcular tempo de espera (random entre 0 e 400ms)
-        sleep((long )(Math.random() * 400));
-
-        // verificar se entretanto já alguem enviou
-        // se sim, aborta, se não envio
-        if(chunksSent.containsValue(message.getFileId()))
-            if(chunksSent.get(message.getFileId()).contains(message.getChunkNo()))
-                return;
-
-        //send message STORED chunk
-        ChunkMessage chunkMessage = new ChunkMessage(new Version(1, 0), peerId, message.getFileId(),
-                message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
-        sendMessage(chunkMessage);
-
+    public MulticastSocket getMcSocket() {
+        return mcSocket;
     }
 
-    private void handleDeleteMessage(DeleteMessage message) throws IOException {
-        if(message.getSenderId() == peerId)
-            return;
-
-        File file = new File(getFileSystemPath() + File.separator + message.getFileId());
-
-        if(!file.exists())
-            return;
-
-        if(!deleteFile(file))
-            System.out.println("Error to delete a file! ");
+    public MulticastSocket getMdbSocket() {
+        return mdbSocket;
     }
 
-    private boolean deleteFile(File file) {
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            for (int i = 0; i < children.length; i++) {
-                boolean success = deleteFile(children[i]);
-                if (!success) {
-                    return false;
-                }
-            }
-        }
-
-        return file.delete();
+    public MulticastSocket getMdrSocket() {
+        return mdrSocket;
     }
 
-
-    /**
-    * Handle data channel messages
-    */
-    public void handleDataChannel() {
-
-        byte[] buffer = new byte[CHUNKSIZE+256];
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-        while (true) {
-            try {
-                mdbSocket.receive(packet);
-
-                Message message = Message.parseMessage(packet);
-                System.out.println("\nReceived message on MDB Channel: " + message.getMessageType() + "\n");
-
-                if(message instanceof PutChunkMessage)
-                    handlePutChunkMessage((PutChunkMessage) message);
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        }
+    public HashMap<String, HashSet<Integer>> getChunksSent() {
+        return chunksSent;
     }
 
-    /**
-    * Handle data recovery channel messages
-    */
-    public void handleDataRecoveryChannel() {
-
-        byte[] buffer = new byte[CHUNKSIZE+256];
-        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-
-        while (true) {
-            try {
-                mdrSocket.receive(packet);
-
-                Message message = Message.parseMessage(packet);
-
-                System.out.println("\nReceived message on MDR Channel: " + message.getMessageType() + "\n");
-
-                //outros peers
-                if(message instanceof ChunkMessage) {
-                    //other peer (?) - > todo verificar se está a funcionar ok
-                    HashSet<Integer> set = chunksSent.getOrDefault(message.getFileId(), new HashSet<>());
-                    set.add(message.getChunkNo());
-                    chunksSent.putIfAbsent(message.getFileId(), set);
-
-                    //store chunk content - main peer (?) -> está a funcionar !
-                    HashMap<Integer, byte[]> chunk = restore.getOrDefault(message.getFileId(), new HashMap<>());
-                    chunk.put(message.getChunkNo(), message.getBody());
-                    restore.putIfAbsent(message.getFileId(), chunk);
-
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /**
-    * Creates root directory, if non-existent, and stores the received chunk
-    * @param message
-    */
-    private void handlePutChunkMessage(PutChunkMessage message) throws IOException {
-
-        if(message.getSenderId() == peerId)
-            return;
-
-        Path path = Paths.get(getFileSystemPath() + "/" + message.getFileId());
-        if (!Files.exists(path))
-            Files.createDirectory(path);
-        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), message.getBody());
-
-        //send message STORED chunk
-        StoredMessage storedMessage = new StoredMessage(message.getVersion(), peerId, message.getFileId(),
-                message.getChunkNo());
-        sendMessage(storedMessage);
-    }
-
-
-    /**
-    * Sends message according to its type
-    * @param message
-    */
-    private void sendMessage(Message message) throws IOException {
-        System.err.println("\nSend message " + message.getMessageType() + "\n");
-        DatagramPacket packet;
-
-        switch (message.getMessageType()) {
-            case PUTCHUNK:
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mdbAddr.getAddress()), mdbPort);
-                mdbSocket.send(packet);
-                break;
-            case STORED:
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
-                mcSocket.send(packet);
-                break;
-            case DELETE:
-                //3 times
-                for(int i = 0; i < NUMBER_TRIES; i++) {
-                    packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
-                    mcSocket.send(packet);
-                }
-                break;
-            case CHUNK:
-                System.out.println("VOU MANDAR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mdrAddr.getAddress()), mdrPort);
-                mdrSocket.send(packet);
-                break;
-            case GETCHUNK:
-                System.out.println("VOU PEDIR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, InetAddress.getByAddress(mcAddr.getAddress()), mcPort);
-                mcSocket.send(packet);
-                break;
-        }
-
+    public HashMap<String, HashMap<Integer, byte[]>> getRestore() {
+        return restore;
     }
 
     /**
@@ -399,201 +271,7 @@ public class Peer extends Thread implements IControl {
         return FILES_DIRECTORY + this.peerId;
     }
 
-    /**
-    * Checks if peer directory exist, if non-existent create.
-    */
-    public void checkFileSystem() throws IOException {
-        Path path = Paths.get(this.getFileSystemPath());
-        if (!Files.exists(path))
-            Files.createDirectory(path);
-    }
-
-    /**
-    * Receive file, split it in chunks and send them to the other peers
-    * @param file
-    * @param replicationDegree
-    * @return name of operation //todo(?)
-    */
-    @Override
-    public String backup(File file, int replicationDegree) throws RemoteException {
-
-        try {
-            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY+file.getName())));
-            int timeout = 200;
-            int numberOfTries = 3;
-            backupHandle(fileContent.getBytes(),  file.getName(),  Long.toString(file.lastModified()), replicationDegree, timeout, numberOfTries);
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return "Operation backup...";
-    }
-
-    private void backupHandle(byte[] fileContent, String fileName, String lastModification,
-                              int replicationDegree, int timeout, int numberOfTries) throws IOException, InterruptedException {
-
-        if(numberOfTries == 0)
-            return;
-
-        byte fileChunks[][] = getFileChunks(fileContent);
-        int chunks[] = new int[fileChunks.length];
-        int i = 0;
-        String fileId = getEncodeHash(fileName+lastModification);
-
-        while(i < fileChunks.length) {
-            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, i, replicationDegree, fileChunks[i]);
-            this.sendMessage(message);
-            chunks[i] = i;
-            i++;
-        }
-
-        sleep(timeout);
-
-        timeout = timeout*2;
-        numberOfTries--;
-
-        //resend chunks if failure
-        if(chunks.length < replicationDegree) {
-            backupHandle(fileContent, fileName, lastModification, replicationDegree, timeout, numberOfTries);
-        }
-    }
-
-    @Override
-    public String delete(File file) throws RemoteException {
-
-        try {
-            String fileId = getEncodeHash(file.getName()+file.lastModified());
-            DeleteMessage message = new DeleteMessage(new Version(1, 0), peerId, fileId);
-            this.sendMessage(message);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return "Operation delete...";
-    }
-
-    @Override
-    public String restore(File file) throws RemoteException {
-
-        try {
-            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY+file.getName())));
-
-            //  calcular quantos chunks serão necessários
-            int noChunks = fileContent.getBytes().length/CHUNKSIZE+1;
-
-            // pede sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
-            getAllChunksFile(file, noChunks);
-
-            //restore file
-            System.out.println("Restore!!!!!!!!!!!!!!");
-            restoreFile(file, fileContent.getBytes().length);
-
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        return "Operation restore...";
-    }
-
-    private void restoreFile(File file, int size) throws IOException {
-
-        String fileId = getEncodeHash(file.getName()+file.lastModified());
-        Set entrySet = restore.get(fileId).entrySet();
-        Iterator it = entrySet.iterator();
-
-        // Iterate through HashMap entries(Key-Value pairs)
-        FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY+ File.separator+
-                "restoredfiles" + File.separator+file.getName(), true);
-
-        while(it.hasNext()){
-            Map.Entry content = (Map.Entry)it.next();
-            fos.write((byte[]) content.getValue());
-        }
-
-        fos.close();
-    }
-
-    private void getAllChunksFile(File file, int noChunks) throws IOException, InterruptedException {
-
-        String fileId = getEncodeHash(file.getName()+file.lastModified());
-
-         for(int i = 0; i < noChunks; i ++){
-             GetChunkMessage message = new GetChunkMessage(new Version(1, 0), peerId, fileId, i);
-             this.sendMessage(message);
-         }
-
-         sleep(400);
-
-        if(restore.get(fileId).size() < noChunks)
-            getAllChunksFile(file, noChunks);
-    }
-
-    @Override
-    public String reclaim() throws RemoteException {
-
-        //todo
-
-        return "Operation reclaim...";
-    }
-
-    /**
-    * Split file in array of chunks
-    * @param fileContent
-    * @return array of byte array with all chunks of fileContent
-    */
-    private byte[][] getFileChunks(byte[] fileContent) {
-        byte buffer[][] = new byte[fileContent.length/CHUNKSIZE+1][CHUNKSIZE];
-
-        int initialPos = 0;
-        int lastPos = CHUNKSIZE;
-
-        for(int i = 0; i < buffer.length; i++) {
-            buffer[i] = getChunk(fileContent, initialPos, lastPos);
-            initialPos += CHUNKSIZE;
-            lastPos += CHUNKSIZE;
-        }
-
-        return buffer;
-    }
-
-    /**
-    * Get chunk from a given position
-    * @param fileContent
-    * @param initPos
-    * @param lastPos
-    * @return byte array with chunk
-    */
-    private byte[] getChunk(byte[] fileContent, int initPos, int lastPos) {
-        byte[] chunk = new byte[CHUNKSIZE];
-
-        int i = 0;
-        while(initPos < lastPos && initPos < fileContent.length ){
-            chunk[i] = fileContent[initPos];
-            i++; initPos++;
-        }
-        return chunk;
-    }
-
-    /**
-    * Get file id encoded
-    * @param text
-    * @return text encoded
-    */
-    private String getEncodeHash(String text)  {
-        MessageDigest digest = null;
-        try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
-        byte[] hash = digest.digest(text.getBytes(StandardCharsets.UTF_8));
-
-        StringBuilder sb = new StringBuilder(hash.length);
-        for(byte b : hash)
-            sb.append(String.format("%02x", b));
-        return sb.toString();
-    }
-
+    // TODO move to respective protocol handler
     private void checkChunksStored(int[] chunks, String fileId, byte[][] fileChunks, int replicationDegree) throws IOException {
         HashSet<Integer> set = acks.get(fileId);
 
@@ -602,7 +280,7 @@ public class Peer extends Thread implements IControl {
         for(int i = 0; i < chunks.length; i++) {
            if(!set.contains(chunks[i])) {
                PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, chunks[i], replicationDegree, fileChunks[i]);
-               this.sendMessage(message);
+               this.MessageUtils.sendMessage(message);
 
                System.out.println("resend...");
            }
