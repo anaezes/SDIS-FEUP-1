@@ -268,7 +268,7 @@ public class Peer extends Thread implements IControl {
     */
     public void handleDataChannel() {
 
-        byte[] buffer = new byte[CHUNKSIZE];
+        byte[] buffer = new byte[CHUNKSIZE+256];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
         while (true) {
@@ -293,7 +293,7 @@ public class Peer extends Thread implements IControl {
     */
     public void handleDataRecoveryChannel() {
 
-        byte[] buffer = new byte[256];
+        byte[] buffer = new byte[CHUNKSIZE+256];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
         while (true) {
@@ -502,7 +502,8 @@ public class Peer extends Thread implements IControl {
         Iterator it = entrySet.iterator();
 
         // Iterate through HashMap entries(Key-Value pairs)
-        FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY+file.getName(), true);
+        FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY+ File.separator+
+                "restoredfiles" + File.separator+file.getName(), true);
 
         while(it.hasNext()){
             Map.Entry content = (Map.Entry)it.next();
