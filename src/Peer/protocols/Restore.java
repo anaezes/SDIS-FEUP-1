@@ -44,18 +44,15 @@ public class Restore {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
-
-
     }
 
     private void restoreFile(File file, int size) throws IOException {
-
         String fileId = Utils.getEncodeHash(file.getName()+file.lastModified());
         Set entrySet = peer.getRestore().get(fileId).entrySet();
         Iterator it = entrySet.iterator();
 
         // Iterate through HashMap entries(Key-Value pairs)
-        FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY+ File.separator+
+        FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY + File.separator +
                 "restoredfiles" + File.separator+file.getName(), true);
 
         while(it.hasNext()){

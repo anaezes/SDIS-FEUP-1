@@ -5,10 +5,8 @@ import Common.remote.IControl;
 import Peer.protocols.Controller;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.rmi.AlreadyBoundException;
 import java.rmi.RemoteException;
@@ -16,13 +14,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import static java.lang.Thread.sleep;
 
 public class Peer {
     private static final int NUMBER_TRIES = 3;

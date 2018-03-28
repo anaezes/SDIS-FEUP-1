@@ -4,9 +4,6 @@ import Common.remote.IControl;
 import Peer.Peer;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.rmi.RemoteException;
 
 public class Controller implements IControl {
