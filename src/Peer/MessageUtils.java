@@ -109,7 +109,7 @@ public class MessageUtils {
                 break;
             case CHUNK:
                 System.out.println("VOU MANDAR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdrAddr(), peer.getMdbPort());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdrAddr(), peer.getMdrPort());
                 peer.getMdrSocket().send(packet);
                 break;
             case GETCHUNK:
