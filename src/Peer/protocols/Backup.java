@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 
 import static java.lang.Thread.sleep;
 
@@ -60,6 +61,21 @@ public class Backup {
         //resend chunks if failure
         if(chunks.length < replicationDegree) {
             handle(fileContent, fileName, lastModification, replicationDegree, timeout, numberOfTries);
+        }
+    }
+
+    private void checkChunksStored(int[] chunks, String fileId, byte[][] fileChunks, int replicationDegree) throws IOException {
+        HashSet<Integer> set = peer.getAcks().get(fileId);
+
+        System.out.println("verify if all is stored...");
+
+        for(int i = 0; i < chunks.length; i++) {
+            if(!set.contains(chunks[i])) {
+                PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peer.getPeerId(), fileId, chunks[i], replicationDegree, fileChunks[i]);
+                peer.MessageUtils.sendMessage(message);
+
+                System.out.println("resend...");
+            }
         }
     }
 }

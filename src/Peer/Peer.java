@@ -1,6 +1,5 @@
 package Peer;
 
-import Common.messages.*;
 import Common.remote.IControl;
 import Peer.protocols.Controller;
 
@@ -208,9 +207,9 @@ public class Peer {
     }
 
 
-    /*
+    /**
     * Creates threads that wait for messages from channels
-    * */
+    */
     public void start() {
         Logger.getGlobal().info("Starting control channel");
         CommunicationChannels.getControlChannelThread().start();
@@ -222,7 +221,7 @@ public class Peer {
         CommunicationChannels.getRecoveryChannelThread().start();
     }
 
-    /*
+    /**
      * Getters for Peer variables
      */
     public HashMap<String, HashSet<Integer>> getAcks() {
@@ -289,19 +288,4 @@ public class Peer {
         return FILES_DIRECTORY + this.peerId;
     }
 
-    // TODO move to respective protocol handler
-    private void checkChunksStored(int[] chunks, String fileId, byte[][] fileChunks, int replicationDegree) throws IOException {
-        HashSet<Integer> set = acks.get(fileId);
-
-        System.out.println("verify if all is stored...");
-
-        for(int i = 0; i < chunks.length; i++) {
-           if(!set.contains(chunks[i])) {
-               PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peerId, fileId, chunks[i], replicationDegree, fileChunks[i]);
-               this.MessageUtils.sendMessage(message);
-
-               System.out.println("resend...");
-           }
-        }
-    }
 }
