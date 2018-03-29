@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class CommunicationChannels {
@@ -61,6 +62,9 @@ public class CommunicationChannels {
                 peer.getMcSocket().receive(packet);
                 Message message = Message.parseMessage(packet);
                 Logger.getGlobal().info("Received message on MC Channel:\n" + message.getMessageType());
+
+                if(message.getSenderId() == peer.getPeerId())
+                    return;
 
                 if(message instanceof StoredMessage) {
                     //store sent ack
@@ -121,15 +125,17 @@ public class CommunicationChannels {
 
                 //outros peers
                 if(message instanceof ChunkMessage) {
-                    //other peer (?) - > todo verificar se está a funcionar ok
+
+                    //other peer
                     HashSet<Integer> set = peer.getChunksSent().getOrDefault(message.getFileId(), new HashSet<>());
                     set.add(message.getChunkNo());
                     peer.getChunksSent().putIfAbsent(message.getFileId(), set);
 
-                    //store chunk content - main peer (?) -> está a funcionar !
+                    //store chunk content - main peer
                     HashMap<Integer, byte[]> chunk = peer.getRestore().getOrDefault(message.getFileId(), new HashMap<>());
                     chunk.put(message.getChunkNo(), message.getBody());
                     peer.getRestore().putIfAbsent(message.getFileId(), chunk);
+
                 }
 
             } catch (IOException e) {

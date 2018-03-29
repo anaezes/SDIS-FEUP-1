@@ -8,6 +8,7 @@ import java.net.DatagramPacket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 
 import static java.lang.Thread.sleep;
 
@@ -36,10 +37,11 @@ public class MessageUtils {
 
         // verificar se entretanto já alguem enviou
         // se sim, aborta, se não envio
-        if(peer.getChunksSent().containsValue(message.getFileId()))
-            if(peer.getChunksSent().get(message.getFileId()).contains(message.getChunkNo()))
+        if(peer.getChunksSent().containsKey(message.getFileId())) {
+            if (peer.getChunksSent().get(message.getFileId()).contains(message.getChunkNo())) {
                 return;
-
+            }
+        }
         //send message STORED chunk
         ChunkMessage chunkMessage = new ChunkMessage(new Version(1, 0), peer.getPeerId(), message.getFileId(),
                 message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
@@ -72,9 +74,9 @@ public class MessageUtils {
         Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
         if (!Files.exists(path))
             Files.createDirectory(path);
-        for (int i = 0; i < message.getBody().length; i++) {
+      /* for (int i = 0; i < message.getBody().length; i++) {
             System.out.println(message.getBody()[i]);
-        }
+        }*/
         Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
 
         //send message STORED chunk
@@ -107,12 +109,10 @@ public class MessageUtils {
                 }
                 break;
             case CHUNK:
-                System.out.println("VOU MANDAR CHUNK");
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdrAddr(), peer.getMdrPort());
                 peer.getMdrSocket().send(packet);
                 break;
             case GETCHUNK:
-                System.out.println("VOU PEDIR CHUNK");
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                 peer.getMcSocket().send(packet);
                 break;

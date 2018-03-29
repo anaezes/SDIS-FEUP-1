@@ -38,8 +38,8 @@ public class Restore {
             getAllChunksFile(file, noChunks);
 
             //restore file
-            System.out.println("Restore!!!!!!!!!!!!!!");
             restoreFile(file, fileContent.getBytes().length);
+            System.out.println("Restore file completed...");
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
@@ -76,6 +76,8 @@ public class Restore {
 
         sleep(400);
 
+        if(!peer.getRestore().containsKey(fileId))
+            getAllChunksFile(file, noChunks);
         if(peer.getRestore().get(fileId).size() < noChunks)
             getAllChunksFile(file, noChunks);
     }
