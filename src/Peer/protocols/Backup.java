@@ -25,16 +25,16 @@ public class Backup {
 
     public void doBackup(File file, int replicationDegree) {
         try {
-            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY + file.getName())));
-            int timeout = 200;
+            byte[] fileContent = Files.readAllBytes(Paths.get(CLIENT_DIRECTORY + file.getName()));
+            int timeout = 200; // TODO this timeout is 200?
             int numberOfTries = 3;
-            handle(fileContent.getBytes(), file.getName(), Long.toString(file.lastModified()), replicationDegree, timeout, numberOfTries);
+            handle(fileContent, file.getName(), Long.toString(file.lastModified()), replicationDegree, timeout, numberOfTries);
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    private void handle(byte[] fileContent, String fileName, String lastModification,int replicationDegree,
+    private void handle(byte[] fileContent, String fileName, String lastModification, int replicationDegree,
                         int timeout, int numberOfTries) throws IOException, InterruptedException {
 
         if(numberOfTries == 0)

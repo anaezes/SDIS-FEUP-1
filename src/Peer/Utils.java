@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class Utils {
     public static boolean deleteFile(File file) {
@@ -27,14 +28,15 @@ public class Utils {
      */
     public static byte[][] getFileChunks(byte[] fileContent, int chunksize) {
         byte buffer[][] = new byte[fileContent.length/chunksize+1][chunksize];
-
+        System.err.println(fileContent.length + "-" + buffer.length + "-" + chunksize);
         int initialPos = 0;
         int lastPos = chunksize;
 
         for(int i = 0; i < buffer.length; i++) {
-            buffer[i] = getChunk(fileContent, initialPos, lastPos, chunksize);
+            /*buffer[i] = getChunk(fileContent, initialPos, lastPos, chunksize);
             initialPos += chunksize;
-            lastPos += chunksize;
+            lastPos += chunksize;*/
+            System.arraycopy(fileContent, chunksize*i, buffer[i], 0, i < buffer.length -1 ? chunksize : fileContent.length % chunksize);
         }
 
         return buffer;
@@ -76,5 +78,21 @@ public class Utils {
         for(byte b : hash)
             sb.append(String.format("%02x", b));
         return sb.toString();
+    }
+
+    /**
+     * Removes all null bytes in the end of a byte array
+     * @param bytes the array to be trimmed
+     * @return byte[] trimmed array
+     */
+    public static byte[] trim(byte[] bytes)
+    {
+        int i = bytes.length - 1;
+        while (i >= 0 && bytes[i] == 0)
+        {
+            --i;
+        }
+
+        return Arrays.copyOf(bytes, i + 1);
     }
 }

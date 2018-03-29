@@ -73,7 +73,10 @@ public class MessageUtils {
         Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
         if (!Files.exists(path))
             Files.createDirectory(path);
-        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), message.getBody());
+        for (int i = 0; i < message.getBody().length; i++) {
+            System.out.println(message.getBody()[i]);
+        }
+        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
 
         //send message STORED chunk
         StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
@@ -95,23 +98,23 @@ public class MessageUtils {
                 peer.getMdbSocket().send(packet);
                 break;
             case STORED:
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcSocket().getLocalSocketAddress());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                 peer.getMcSocket().send(packet);
                 break;
             case DELETE:
                 for(int i = 0; i < NUMBER_TRIES; i++) {
-                    packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcSocket().getLocalSocketAddress());
+                    packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                     peer.getMcSocket().send(packet);
                 }
                 break;
             case CHUNK:
                 System.out.println("VOU MANDAR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdrSocket().getLocalSocketAddress());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMdrAddr(), peer.getMdbPort());
                 peer.getMdrSocket().send(packet);
                 break;
             case GETCHUNK:
                 System.out.println("VOU PEDIR CHUNK");
-                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcSocket().getLocalSocketAddress());
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                 peer.getMcSocket().send(packet);
                 break;
         }

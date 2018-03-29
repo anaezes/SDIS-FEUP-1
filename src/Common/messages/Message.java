@@ -173,7 +173,7 @@ public abstract class Message {
         try {
             String value = new String(packet.getData(), "UTF-8");
             String[] parameters = value.split(" ");
-            String[] headerBody = value.split("\r\n\r\n");
+            String[] headerBody = value.split("\r\n\r\n", 2);
             String[] version = parameters[1].split("\\.");
 
             switch (parameters[0]) {
