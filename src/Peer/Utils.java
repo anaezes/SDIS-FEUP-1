@@ -28,15 +28,10 @@ public class Utils {
      */
     public static byte[][] getFileChunks(byte[] fileContent, int chunksize) {
         byte buffer[][] = new byte[fileContent.length/chunksize+1][chunksize];
-        System.err.println(fileContent.length + "-" + buffer.length + "-" + chunksize);
-        int initialPos = 0;
-        int lastPos = chunksize;
 
         for(int i = 0; i < buffer.length; i++) {
-            /*buffer[i] = getChunk(fileContent, initialPos, lastPos, chunksize);
-            initialPos += chunksize;
-            lastPos += chunksize;*/
-            System.arraycopy(fileContent, chunksize*i, buffer[i], 0, i < buffer.length -1 ? chunksize : fileContent.length % chunksize);
+            System.arraycopy(fileContent, chunksize*i, buffer[i], 0,
+                    i < buffer.length -1 ? chunksize : fileContent.length % chunksize);
         }
 
         return buffer;
