@@ -64,7 +64,7 @@ public class CommunicationChannels {
                 Logger.getGlobal().info("Received message on MC Channel:\n" + message.getMessageType());
 
                 if(message.getSenderId() == peer.getPeerId())
-                    return;
+                    continue;
 
                 if(message instanceof StoredMessage) {
                     //store sent ack
