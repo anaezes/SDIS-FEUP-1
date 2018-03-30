@@ -114,6 +114,10 @@ public class MessageUtils {
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                 peer.getMcSocket().send(packet);
                 break;
+            case REMOVED:
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
+                peer.getMcSocket().send(packet);
+                break;
         }
 
     }
