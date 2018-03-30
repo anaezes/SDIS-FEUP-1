@@ -14,6 +14,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,6 +55,9 @@ public class Peer {
 
     //store the flags of chunks sent
     private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
+
+    //store how many peers saved the chunk
+    private final ConcurrentHashMap<String, HashSet<Integer>> chunckCount = new ConcurrentHashMap<>();
 
     // Contains communication channel handlers
     public final CommunicationChannels CommunicationChannels;
@@ -259,6 +263,10 @@ public class Peer {
 
     public HashMap<String, HashMap<Integer, byte[]>> getRestore() {
         return restore;
+    }
+
+    public ConcurrentHashMap<String, HashSet<Integer>> getChunckCount() {
+        return chunckCount;
     }
 
     public InetAddress getMcAddr() {

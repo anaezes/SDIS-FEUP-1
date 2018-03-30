@@ -1,7 +1,6 @@
 package Common.messages;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 
 public abstract class Message {
@@ -204,6 +203,14 @@ public abstract class Message {
         }
 
         return msg;
+    }
+
+    /**
+     * Concatenates the fileId and ChunkNo
+     * @return the chunk unique identifier
+     */
+    public String getChunkUID() {
+        return fileId + chunkNo;
     }
 }
 

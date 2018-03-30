@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class CommunicationChannels {
@@ -63,8 +62,16 @@ public class CommunicationChannels {
                 Message message = Message.parseMessage(packet);
                 Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
-                if(message.getSenderId() == peer.getPeerId())
+                // Stores all peers that have the given chunk. Must be done even if the senderId == peerId
+                if (message instanceof StoredMessage) {
+                    HashSet<Integer> set = peer.getChunckCount().getOrDefault(message.getChunkUID(), new HashSet<>());
+                    set.add(message.getSenderId());
+                    peer.getChunckCount().put(message.getChunkUID(), set);
+                }
+
+                if(message.getSenderId() == peer.getPeerId()) {
                     continue;
+                }
 
                 if(message instanceof StoredMessage) {
                     //store sent ack
