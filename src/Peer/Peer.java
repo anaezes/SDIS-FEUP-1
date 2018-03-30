@@ -25,6 +25,8 @@ public class Peer {
             File.separator + "client" + File.separator;
 
     private final int CHUNKSIZE = 64000;
+    private final long STORAGE_CAPACITY;
+    private final String DEFAULT_STORAGE_CAPACITY = "1m"; //150 kilobytes
 
     private final int peerId;
     public boolean isInitiatorPeer = false;
@@ -64,9 +66,14 @@ public class Peer {
 
     public static void main(String[] args) {
         if (args.length < 3) {
-            System.out.println("Usage: java Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT>");
+            System.out.println("Usage: java Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT> [capacity=1m]");
+            System.out.println("\tcapacity in bytes or suffixed with [k, m, g]");
+            System.out.println("\tk - Kilobyte]");
+            System.out.println("\tm - Megabyte]");
+            System.out.println("\tg - Gigabyte]");
             return;
         }
+
         Logger.getGlobal().setLevel(Level.ALL);
         System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tb %1$td, %1$tY %1$tl:%1$tM:%1$tS %1$Tp %2$s%n%4$s: %5$s%n\n");
 
@@ -90,6 +97,9 @@ public class Peer {
 
         // Verify if this peer base directory exists. If not creates it.
         initFilesystem();
+        STORAGE_CAPACITY = Utils.parseSizeArg(args.length > 7 ? args[7] : DEFAULT_STORAGE_CAPACITY);
+        Logger.getGlobal().info("Peer storage capacity is: " + STORAGE_CAPACITY + " bytes");
+        Logger.getGlobal().info("Peer free capacity is: " + getFreeCapacity() + " bytes");
 
         // Creates communication channel handlers
         this.CommunicationChannels = new CommunicationChannels(this, CHUNKSIZE);
@@ -274,6 +284,10 @@ public class Peer {
 
     public int getMdrPort() {
         return mdrPort;
+    }
+
+    public long getFreeCapacity() {
+        return STORAGE_CAPACITY - Utils.directorySize(new File(FILES_DIRECTORY + getPeerId()));
     }
 
     /**

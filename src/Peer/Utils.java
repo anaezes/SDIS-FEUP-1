@@ -90,4 +90,29 @@ public class Utils {
 
         return Arrays.copyOf(bytes, i + 1);
     }
+
+    public static long directorySize(File dir) {
+        long size = 0;
+        if (dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            for (int i = 0; i < files.length; i++) size += directorySize(files[i]);
+            return size;
+        } else if (dir.isFile()) return dir.length();
+        else return 0;
+    }
+
+    public static long parseSizeArg(String arg) {
+        if (arg.toLowerCase().endsWith("k")) {
+            String number = arg.substring(0, arg.length() - 1);
+            return Long.parseLong(number) * (long)1e3;
+        } else if (arg.toLowerCase().endsWith("m")) {
+            String number = arg.substring(0, arg.length() - 1);
+            return Long.parseLong(number) * (long)1e6;
+        } else if (arg.toLowerCase().endsWith("g")) {
+            String number = arg.substring(0, arg.length() - 1);
+            return Long.parseLong(number) * (long) 1e9;
+        }
+
+        return Long.parseLong(arg);
+    }
 }
