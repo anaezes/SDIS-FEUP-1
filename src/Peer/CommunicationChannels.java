@@ -61,7 +61,7 @@ public class CommunicationChannels {
             try {
                 peer.getMcSocket().receive(packet);
                 Message message = Message.parseMessage(packet);
-                Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType());
+                Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
                 if(message.getSenderId() == peer.getPeerId())
                     continue;
@@ -125,6 +125,7 @@ public class CommunicationChannels {
 
                 if(message instanceof ChunkMessage) {
                     if(peer.isInitiatorPeer) {
+                        Logger.getGlobal().info("Recevied chunk from peer " + message.getSenderId());
                         HashMap<Integer, byte[]> chunk = peer.getRestore().getOrDefault(message.getFileId(), new HashMap<>());
                         chunk.put(message.getChunkNo(), message.getBody());
                         peer.getRestore().putIfAbsent(message.getFileId(), chunk);
