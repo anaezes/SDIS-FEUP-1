@@ -123,21 +123,22 @@ public class CommunicationChannels {
 
                 Logger.getGlobal().info("Received message on MDR Channel: " + message.getMessageType());
 
-                //outros peers
                 if(message instanceof ChunkMessage) {
+                    if(peer.isInitiatorPeer) {
+                        HashMap<Integer, byte[]> chunk = peer.getRestore().getOrDefault(message.getFileId(), new HashMap<>());
+                        chunk.put(message.getChunkNo(), message.getBody());
+                        peer.getRestore().putIfAbsent(message.getFileId(), chunk);
+                    }
+                    else {
+                        //clear hashMap
+                        if(message.getChunkNo() == 0 && peer.getChunksSent().containsKey(message.getFileId()))
+                            peer.getChunksSent().get(message.getFileId()).clear();
 
-                    //other peer
-                    HashSet<Integer> set = peer.getChunksSent().getOrDefault(message.getFileId(), new HashSet<>());
-                    set.add(message.getChunkNo());
-                    peer.getChunksSent().putIfAbsent(message.getFileId(), set);
-
-                    //store chunk content - main peer
-                    HashMap<Integer, byte[]> chunk = peer.getRestore().getOrDefault(message.getFileId(), new HashMap<>());
-                    chunk.put(message.getChunkNo(), message.getBody());
-                    peer.getRestore().putIfAbsent(message.getFileId(), chunk);
-
+                        HashSet<Integer> set = peer.getChunksSent().getOrDefault(message.getFileId(), new HashSet<>());
+                        set.add(message.getChunkNo());
+                        peer.getChunksSent().putIfAbsent(message.getFileId(), set);
+                    }
                 }
-
             } catch (IOException e) {
                 e.printStackTrace();
             }

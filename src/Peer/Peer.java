@@ -27,6 +27,7 @@ public class Peer {
     private final int CHUNKSIZE = 64000;
 
     private final int peerId;
+    public boolean isInitiatorPeer = false;
 
     // Control channel
     private MulticastSocket mcSocket;
@@ -192,6 +193,8 @@ public class Peer {
         try {
             // Bind the remote object's stub in the registry
             registry.bind( "peer" + this.getPeerId(), control);
+            isInitiatorPeer = true;
+
         } catch (AlreadyBoundException e) {
             e.printStackTrace();
         }

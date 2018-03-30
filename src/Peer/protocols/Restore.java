@@ -77,9 +77,9 @@ public class Restore {
 
         sleep(400);
 
-        if(!peer.getRestore().containsKey(fileId))
+       /* if(!peer.getRestore().containsKey(fileId))
             getAllChunksFile(file, noChunks);
         if(peer.getRestore().get(fileId).size() < noChunks)
-            getAllChunksFile(file, noChunks);
+            getAllChunksFile(file, noChunks);*/
     }
 }
