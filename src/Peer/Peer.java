@@ -98,8 +98,7 @@ public class Peer {
         // Verify if this peer base directory exists. If not creates it.
         initFilesystem();
         STORAGE_CAPACITY = Utils.parseSizeArg(args.length > 7 ? args[7] : DEFAULT_STORAGE_CAPACITY);
-        Logger.getGlobal().info("Peer storage capacity is: " + STORAGE_CAPACITY + " bytes");
-        Logger.getGlobal().info("Peer free capacity is: " + getFreeCapacity() + " bytes");
+        logCapacityInfo();
 
         // Creates communication channel handlers
         this.CommunicationChannels = new CommunicationChannels(this, CHUNKSIZE);
@@ -286,8 +285,18 @@ public class Peer {
         return mdrPort;
     }
 
+    public long getUsedCapacity() {
+        return Utils.directorySize(new File(FILES_DIRECTORY + getPeerId()));
+    }
+
     public long getFreeCapacity() {
-        return STORAGE_CAPACITY - Utils.directorySize(new File(FILES_DIRECTORY + getPeerId()));
+        return STORAGE_CAPACITY - getUsedCapacity();
+    }
+
+    public void logCapacityInfo() {
+        Logger.getGlobal().info("Peer storage capacity is: " + STORAGE_CAPACITY + " bytes\n" +
+                "Peer used capacity is: " + getUsedCapacity() + " bytes (" + ((float)getUsedCapacity()/STORAGE_CAPACITY*100) + "%)\n" +
+                "Peer free capacity is: " + getFreeCapacity() + " bytes (" + ((float)getFreeCapacity()/STORAGE_CAPACITY*100) + "%)\n");
     }
 
     /**
