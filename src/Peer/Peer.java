@@ -68,9 +68,9 @@ public class Peer {
         if (args.length < 3) {
             System.out.println("Usage: java Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT> [capacity=1m]");
             System.out.println("\tcapacity in bytes or suffixed with [k, m, g]");
-            System.out.println("\tk - Kilobyte]");
-            System.out.println("\tm - Megabyte]");
-            System.out.println("\tg - Gigabyte]");
+            System.out.println("\tk - Kilobyte");
+            System.out.println("\tm - Megabyte");
+            System.out.println("\tg - Gigabyte");
             return;
         }
 
@@ -286,7 +286,7 @@ public class Peer {
     }
 
     public long getUsedCapacity() {
-        return Utils.directorySize(new File(FILES_DIRECTORY + getPeerId()));
+        return Utils.directorySize(new File(getFileSystemPath()));
     }
 
     public long getFreeCapacity() {
@@ -315,4 +315,13 @@ public class Peer {
         return FILES_DIRECTORY + this.peerId;
     }
 
+    public void validateStorageCapacity() {
+        if (getFreeCapacity() < 0) {
+            try {
+                ProtocolController.reclaim();
+            } catch (RemoteException e) {
+                Logger.getGlobal().warning("Couldn't reclaim space: " + e.getLocalizedMessage());
+            }
+        }
+    }
 }

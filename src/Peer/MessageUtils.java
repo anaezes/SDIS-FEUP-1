@@ -81,6 +81,9 @@ public class MessageUtils {
         StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
                 message.getChunkNo());
         sendMessage(storedMessage);
+
+        peer.logCapacityInfo();
+        peer.validateStorageCapacity();
     }
 
     /**
