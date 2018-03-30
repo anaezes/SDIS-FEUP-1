@@ -67,6 +67,7 @@ public class Peer {
             return;
         }
         Logger.getGlobal().setLevel(Level.ALL);
+        System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tb %1$td, %1$tY %1$tl:%1$tM:%1$tS %1$Tp %2$s%n%4$s: %5$s%n\n");
 
         try {
             Peer peer = new Peer(args);
@@ -120,9 +121,9 @@ public class Peer {
             mcSocket.joinGroup(mcAddr);
 
         } catch (UnknownHostException e) {
-            System.out.println("Socket error: " + e.getMessage());
+            Logger.getGlobal().severe("Socket error: " + e.getMessage());
         } catch (IOException e){
-            System.out.println("Socket error: " + e.getMessage());
+            Logger.getGlobal().severe("Socket error: " + e.getMessage());
         }
     }
 
@@ -141,9 +142,9 @@ public class Peer {
             mdbSocket.joinGroup(mdbAddr);
 
         } catch (UnknownHostException e) {
-            System.out.println("Socket error: " + e.getMessage());
+            Logger.getGlobal().severe("Socket error: " + e.getMessage());
         } catch (IOException e){
-            System.out.println("Socket error: " + e.getMessage());
+            Logger.getGlobal().severe("Socket error: " + e.getMessage());
         }
     }
 
@@ -162,9 +163,9 @@ public class Peer {
             mdrSocket.joinGroup(mdrAddr);
 
         } catch (UnknownHostException e) {
-            System.out.println("Socket error: " + e.getMessage());
+            Logger.getGlobal().severe("Socket error: " + e.getMessage());
         } catch (IOException e) {
-            System.out.println("Socket error: " + e.getMessage());
+            Logger.getGlobal().severe("Socket error: " + e.getMessage());
         }
     }
 

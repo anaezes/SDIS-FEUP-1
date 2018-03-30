@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import static java.lang.Thread.sleep;
 
@@ -29,17 +30,17 @@ public class Restore {
 
     public void doRestore(File file) {
         try {
-            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY+file.getName())));
+            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY + file.getName())));
 
             //  calcular quantos chunks serão necessários
-            int noChunks = fileContent.getBytes().length/CHUNKSIZE+1;
+            int noChunks = fileContent.getBytes().length/CHUNKSIZE + 1;
 
             // pede sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
             getAllChunksFile(file, noChunks);
 
             //restore file
             restoreFile(file, fileContent.getBytes().length);
-            System.out.println("Restore file completed...");
+            Logger.getGlobal().info("Restore file completed");
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();

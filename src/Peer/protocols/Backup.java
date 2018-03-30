@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashSet;
+import java.util.logging.Logger;
 
 import static java.lang.Thread.sleep;
 
@@ -67,14 +68,14 @@ public class Backup {
     private void checkChunksStored(int[] chunks, String fileId, byte[][] fileChunks, int replicationDegree) throws IOException {
         HashSet<Integer> set = peer.getAcks().get(fileId);
 
-        System.out.println("verify if all is stored...");
+        Logger.getGlobal().info("Verify if all chunks are stored...");
 
         for(int i = 0; i < chunks.length; i++) {
             if(!set.contains(chunks[i])) {
                 PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peer.getPeerId(), fileId, chunks[i], replicationDegree, fileChunks[i]);
                 peer.MessageUtils.sendMessage(message);
 
-                System.out.println("resend...");
+                Logger.getGlobal().info("Resending...");
             }
         }
     }

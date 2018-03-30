@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import static java.lang.Thread.sleep;
 
@@ -59,7 +60,7 @@ public class MessageUtils {
             return;
 
         if(!Utils.deleteFile(file))
-            System.out.println("Error to delete a file! ");
+            Logger.getGlobal().severe("Couldn't delete file: " + file.getAbsolutePath());
     }
 
     /**
@@ -74,9 +75,6 @@ public class MessageUtils {
         Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
         if (!Files.exists(path))
             Files.createDirectory(path);
-      /* for (int i = 0; i < message.getBody().length; i++) {
-            System.out.println(message.getBody()[i]);
-        }*/
         Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
 
         //send message STORED chunk
@@ -90,7 +88,7 @@ public class MessageUtils {
      * @param message
      */
     public void sendMessage(Message message) throws IOException {
-        System.err.println("\nSend message " + message.getMessageType() + "\n");
+        Logger.getGlobal().info("Send message " + message.getMessageType());
         DatagramPacket packet;
 
         switch (message.getMessageType()) {

@@ -3,14 +3,12 @@ package Client;
 import Common.remote.IControl;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.logging.Logger;
 
 public class Client {
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator + "filesystem" + File.separator + "client" + File.separator;
@@ -100,7 +98,7 @@ public class Client {
                 response = "Invalid Operation";
         }
 
-        System.out.println("Response: " + response);
+        Logger.getGlobal().info("Response: " + response);
     }
 
     public String getOperation() {
@@ -122,7 +120,7 @@ public class Client {
             client.makeRequest();
         }
         catch (IOException e){
-            System.out.println("Error: " + e.toString());
+            System.err.println("Error: " + e.toString());
         }
     }
 }

@@ -61,7 +61,7 @@ public class CommunicationChannels {
             try {
                 peer.getMcSocket().receive(packet);
                 Message message = Message.parseMessage(packet);
-                Logger.getGlobal().info("Received message on MC Channel:\n" + message.getMessageType());
+                Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType());
 
                 if(message.getSenderId() == peer.getPeerId())
                     continue;
@@ -97,7 +97,7 @@ public class CommunicationChannels {
                 peer.getMdbSocket().receive(packet);
 
                 Message message = Message.parseMessage(packet);
-                System.out.println("\nReceived message on MDB Channel: " + message.getMessageType() + "\n");
+                Logger.getGlobal().info("Received message on MDB Channel: " + message.getMessageType());
 
                 if(message instanceof PutChunkMessage)
                     peer.MessageUtils.handlePutChunkMessage((PutChunkMessage) message);
@@ -121,7 +121,7 @@ public class CommunicationChannels {
 
                 Message message = Message.parseMessage(packet);
 
-                System.out.println("\nReceived message on MDR Channel: " + message.getMessageType() + "\n");
+                Logger.getGlobal().info("Received message on MDR Channel: " + message.getMessageType());
 
                 //outros peers
                 if(message instanceof ChunkMessage) {

@@ -102,7 +102,7 @@ public abstract class Message {
       /*  try {
             return new String(fileId, "UTF-8");
         } catch (UnsupportedEncodingException e) {
-            System.err.println("Cannot parse FileID to string: " + e.getMessage());
+            Logger.getGlobal().severe("Cannot parse FileID to string: " + e.getMessage());
         }*/
         return "";
     }
