@@ -53,7 +53,7 @@ public class Restore {
 
         // Iterate through HashMap entries(Key-Value pairs)
         FileOutputStream fos = new FileOutputStream(CLIENT_DIRECTORY + File.separator +
-                "restoredfiles" + File.separator + file.getName(), true);
+                "restoredfiles" + File.separator + file.getName(), false);
 
         while(it.hasNext() && size > 0){
             Map.Entry content = (Map.Entry)it.next();
