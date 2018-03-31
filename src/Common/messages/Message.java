@@ -196,6 +196,10 @@ public abstract class Message {
                     msg = new GetChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
                             Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
                     break;
+                case "REMOVED":
+                    msg = new RemovedMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                            Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
+                    break;
             }
 
         } catch (IOException e) {

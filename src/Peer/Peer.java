@@ -57,7 +57,7 @@ public class Peer {
     private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
 
     //store how many peers saved the chunk
-    private final ConcurrentHashMap<String, HashSet<Integer>> chunckCount = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ChunkMetadata> chunkCount = new ConcurrentHashMap<>();
 
     // Contains communication channel handlers
     public final CommunicationChannels CommunicationChannels;
@@ -265,8 +265,8 @@ public class Peer {
         return restore;
     }
 
-    public ConcurrentHashMap<String, HashSet<Integer>> getChunckCount() {
-        return chunckCount;
+    public ConcurrentHashMap<String, ChunkMetadata> getChunkCount() {
+        return chunkCount;
     }
 
     public InetAddress getMcAddr() {

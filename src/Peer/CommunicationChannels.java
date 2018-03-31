@@ -60,13 +60,15 @@ public class CommunicationChannels {
             try {
                 peer.getMcSocket().receive(packet);
                 Message message = Message.parseMessage(packet);
+
                 Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
                 // Stores all peers that have the given chunk. Must be done even if the senderId == peerId
                 if (message instanceof StoredMessage) {
-                    HashSet<Integer> set = peer.getChunckCount().getOrDefault(message.getChunkUID(), new HashSet<>());
-                    set.add(message.getSenderId());
-                    peer.getChunckCount().put(message.getChunkUID(), set);
+                    ChunkMetadata metadata = peer.getChunkCount().getOrDefault(message.getChunkUID(),
+                            new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
+                    metadata.getPeerIds().add(message.getSenderId());
+                    peer.getChunkCount().put(message.getChunkUID(), metadata);
                 }
 
                 if(message.getSenderId() == peer.getPeerId()) {
@@ -84,6 +86,9 @@ public class CommunicationChannels {
                 }
                 else if(message instanceof GetChunkMessage){
                 peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
+                }
+                else if (message instanceof RemovedMessage) {
+                    // TODO handle removed message
                 }
 
             } catch (IOException | InterruptedException e) {
