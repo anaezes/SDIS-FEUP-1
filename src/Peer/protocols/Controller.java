@@ -34,18 +34,21 @@ public class Controller implements IControl {
      */
     @Override
     public String backup(File file, int replicationDegree) {
+        peer.isInitiatorPeer = true;
         backup.doBackup(file, replicationDegree);
         return "Operation backup...";
     }
 
     @Override
     public String delete(File file) {
+        peer.isInitiatorPeer = true;
         delete.doDelete(file);
         return "Operation delete...";
     }
 
     @Override
     public String restore(File file) throws RemoteException {
+        peer.isInitiatorPeer = true;
         restore.doRestore(file);
         return "Operation restore...";
     }
