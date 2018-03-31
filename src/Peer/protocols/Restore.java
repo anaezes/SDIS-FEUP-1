@@ -83,7 +83,7 @@ public class Restore {
         String fileId = Utils.getEncodeHash(file.getName()+file.lastModified());
 
         for(int i = 0; i < noChunks; i ++){
-            GetChunkMessage message = new GetChunkMessage(new Version(1, 0), peer.getPeerId(), fileId, i);
+            GetChunkMessage message = new GetChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), fileId, i);
             peer.MessageUtils.sendMessage(message);
         }
     }

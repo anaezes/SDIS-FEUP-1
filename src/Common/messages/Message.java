@@ -78,10 +78,6 @@ public abstract class Message {
         this.version = version;
     }
 
-    public void setVersion(int n, int m) {
-        this.version = new Version(n, m);
-    }
-
     public int getSenderId() {
         return senderId;
     }
@@ -96,19 +92,6 @@ public abstract class Message {
 
     public void setFileId(String fileId) {
         this.fileId = fileId;
-    }
-
-    public String getFileIdToString() {
-      /*  try {
-            return new String(fileId, "UTF-8");
-        } catch (UnsupportedEncodingException e) {
-            Logger.getGlobal().severe("Cannot parse FileID to string: " + e.getMessage());
-        }*/
-        return "";
-    }
-
-    public void setFileIdFromString(String fileId) {
-        // this.fileId = new String(fileId).getBytes();
     }
 
     public int getChunkNo() {
@@ -183,8 +166,9 @@ public abstract class Message {
             switch (parameters[0]) {
                 case "PUTCHUNK":
                     chunk = Arrays.copyOfRange(data,headerSize,data.length);
-                    msg = new PutChunkMessage(new Version(1, 0), Integer.parseInt(parameters[2]), parameters[3],
-                            Integer.parseInt(parameters[4]), Integer.parseInt(parameters[5]), chunk);
+                    msg = new PutChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1]))
+                            , Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]),
+                            Integer.parseInt(parameters[5]), chunk);
                     break;
                 case "STORED":
                     msg = new StoredMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
@@ -196,8 +180,8 @@ public abstract class Message {
                     break;
                 case "CHUNK":
                     chunk = Arrays.copyOfRange(data,headerSize,data.length);
-                    msg = new ChunkMessage(new Version(1, 0), Integer.parseInt(parameters[2]), parameters[3],
-                            Integer.parseInt(parameters[4]), chunk);
+                    msg = new ChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1]))
+                            , Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]), chunk);
                     break;
                 case "GETCHUNK":
                     msg = new GetChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),

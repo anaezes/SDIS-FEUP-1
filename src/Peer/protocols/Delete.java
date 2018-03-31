@@ -18,7 +18,7 @@ public class Delete {
     public void doDelete(File file) {
         try {
             String fileId = Utils.getEncodeHash(file.getName()+file.lastModified());
-            DeleteMessage message = new DeleteMessage(new Version(1, 0), peer.getPeerId(), fileId);
+            DeleteMessage message = new DeleteMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), fileId);
             peer.MessageUtils.sendMessage(message);
         } catch (IOException e) {
             e.printStackTrace();

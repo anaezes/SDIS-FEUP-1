@@ -51,7 +51,7 @@ public class Backup {
 
         int i = 0;
         while(i < WINDOWSIZE && index < fileChunks.length) {
-            PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peer.getPeerId(), fileId, index, replicationDegree, fileChunks[index]);
+            PutChunkMessage message = new PutChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), fileId, index, replicationDegree, fileChunks[index]);
             peer.MessageUtils.sendMessage(message);
             chunks[i] = index;
             i++;
@@ -80,7 +80,7 @@ public class Backup {
 
                 for (int i = 0; i < chunks.length; i++) {
                     if (!set.contains(chunks[i])) {
-                        PutChunkMessage message = new PutChunkMessage(new Version(1, 0), peer.getPeerId(), fileId, chunks[i], replicationDegree, fileChunks[i]);
+                        PutChunkMessage message = new PutChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), fileId, chunks[i], replicationDegree, fileChunks[i]);
                         try {
                             peer.MessageUtils.sendMessage(message);
                         } catch (IOException e) {

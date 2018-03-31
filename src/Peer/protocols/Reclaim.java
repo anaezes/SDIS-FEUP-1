@@ -31,7 +31,7 @@ public class Reclaim {
 
         if (keyToRemove.length() > 0) {
             ChunkMetadata metadata = peer.getChunkCount().get(keyToRemove);
-            RemovedMessage message = new RemovedMessage(new Version(1, 0), peer.getPeerId(), metadata.getFileId(), metadata.getChunkNo());
+            RemovedMessage message = new RemovedMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), metadata.getFileId(), metadata.getChunkNo());
             removeChunkFromDisk(metadata);
             peer.logCapacityInfo();
 

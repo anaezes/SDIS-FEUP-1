@@ -43,7 +43,7 @@ public class MessageUtils {
             }
             try {
                 //send message STORED chunk
-                ChunkMessage chunkMessage = new ChunkMessage(new Version(1, 0), peer.getPeerId(), message.getFileId(),
+                ChunkMessage chunkMessage = new ChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), message.getFileId(),
                         message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
                 sendMessage(chunkMessage);
             } catch (IOException e) {
@@ -83,7 +83,7 @@ public class MessageUtils {
                 Utils.scheduleAction(() -> {
                     try {
                         if (lastPutChunkReceived == null || lastPutChunkReceived.getChunkUID() != message.getChunkUID()) {
-                            PutChunkMessage pcMessage = new PutChunkMessage(new Version(1, 0), peer.getPeerId(),
+                            PutChunkMessage pcMessage = new PutChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(),
                                     metadata.getFileId(), metadata.getChunkNo(), metadata.getRepDeg(), chunk);
 
                             peer.MessageUtils.sendMessage(pcMessage); // If it hasn't received a PutChunk message to the same chunk

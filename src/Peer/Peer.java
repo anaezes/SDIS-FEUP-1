@@ -31,7 +31,7 @@ public class Peer {
             File.separator + "client" + File.separator;
 
     private final long STORAGE_CAPACITY;
-    public final Version PROTOCOL_VERSION;
+    public static final Version PROTOCOL_VERSION = new Version(1, 0);
 
     private final int peerId;
     public boolean isInitiatorPeer = false;
@@ -106,7 +106,6 @@ public class Peer {
         Logger.getGlobal().info("Creating Peer...");
         this.peerId = Integer.parseInt(args[0]);
         IgnorePutChunkUID = new ArrayList<>();
-        PROTOCOL_VERSION = new Version(1, 0);
 
         // Verify if this peer base directory exists. If not creates it.
         initFilesystem();
@@ -334,10 +333,13 @@ public class Peer {
         return FILES_DIRECTORY + this.peerId;
     }
 
+    /**
+     * Checks if peer has free storage, and if it doesn't, starts reclaim protocol
+     */
     public void validateStorageCapacity() {
         if (getFreeCapacity() < 0) {
             Utils.scheduleAction(() -> {
-                Logger.getGlobal().info("Starting reclaiming process...");
+                Logger.getGlobal().info("Starting reclaiming protocol...");
                 try {
                     ProtocolController.reclaim();
                 } catch (RemoteException e) {
