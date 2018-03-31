@@ -66,18 +66,28 @@ public class CommunicationChannels {
                 if(message.getSenderId() == peer.getPeerId())
                     continue;
 
-                if(message instanceof StoredMessage) {
-                    //store sent ack
-                    HashSet<Integer> set = peer.getAcks().getOrDefault(message.getFileId(), new HashSet<>());
-                    set.add(message.getChunkNo());
-                    peer.getAcks().putIfAbsent(message.getFileId(), set);
-                }
-                else if(message instanceof DeleteMessage){
-                    peer.MessageUtils.handleDeleteMessage((DeleteMessage) message);
-                }
-                else if(message instanceof GetChunkMessage){
-                peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
-                }
+
+                    if (message instanceof StoredMessage) {
+                        if(peer.isInitiatorPeer) {
+                            //store sent ack
+                            synchronized (peer.getAcks()) {
+                                HashSet<Integer> set = peer.getAcks().getOrDefault(message.getFileId(), new HashSet<>());
+                                set.add(message.getChunkNo());
+                                peer.getAcks().putIfAbsent(message.getFileId(), set);
+                            }
+                        }
+                        else {
+                            synchronized (peer.getChunkCount()) {
+                                HashSet<Integer> set = peer.getChunkCount().getOrDefault(message.getFileId() + message.getChunkNo(), new HashSet<>());
+                                set.add(message.getSenderId());
+                                peer.getChunkCount().putIfAbsent(message.getFileId()+ message.getChunkNo(), set);
+                            }
+                        }
+                    } else if (message instanceof DeleteMessage) {
+                        peer.MessageUtils.handleDeleteMessage((DeleteMessage) message);
+                    } else if (message instanceof GetChunkMessage) {
+                        peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
+                    }
 
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();

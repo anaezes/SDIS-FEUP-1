@@ -8,6 +8,7 @@ import java.net.DatagramPacket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.logging.Logger;
 
 public class MessageUtils {
@@ -71,15 +72,33 @@ public class MessageUtils {
         if(message.getSenderId() == peer.getPeerId())
             return;
 
-        Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
-        if (!Files.exists(path))
-            Files.createDirectory(path);
-        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
+        Utils.scheduleAction(() -> {
+            synchronized (peer.getChunkCount()) {
+                String hash = message.getFileId() + message.getChunkNo();
 
-        //send message STORED chunk
-        StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
-                message.getChunkNo());
-        sendMessage(storedMessage);
+                if (peer.getChunkCount().containsKey(hash)) {
+                    if (peer.getChunkCount().get(hash).size() >= message.getReplicationDeg()) {
+                        Logger.getGlobal().info("Replication degree reached, not storing chunk...");
+                        return;
+                    }
+                }
+            }
+            Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
+            try {
+                if (!Files.exists(path))
+                    Files.createDirectory(path);
+                Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
+
+                //send message STORED chunk
+                StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
+                        message.getChunkNo());
+                sendMessage(storedMessage);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }, (long )(Math.random() * 400));
+
     }
 
     /**
