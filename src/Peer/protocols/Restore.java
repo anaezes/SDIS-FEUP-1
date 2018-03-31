@@ -29,10 +29,10 @@ public class Restore {
 
     public void doRestore(File file) {
         try {
-            String fileContent = new String(Files.readAllBytes(Paths.get(CLIENT_DIRECTORY + file.getName())));
+            byte fileContent[] = Files.readAllBytes(Paths.get(CLIENT_DIRECTORY + file.getName()));
 
             //  calcular quantos chunks serão necessários
-            int noChunks = fileContent.getBytes().length/CHUNKSIZE + 1;
+            int noChunks = fileContent.length/CHUNKSIZE + 1;
 
             // pede sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
             getAllChunksFile(file, noChunks);
@@ -45,7 +45,7 @@ public class Restore {
                 else{
                     //restore file
                     try {
-                        restoreFile(file, fileContent.getBytes().length, fileId);
+                        restoreFile(file, fileContent.length, fileId);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
