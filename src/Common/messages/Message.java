@@ -3,6 +3,7 @@ package Common.messages;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
+import java.util.Arrays;
 
 public abstract class Message {
     /*
@@ -171,15 +172,20 @@ public abstract class Message {
         Message msg = null;
 
         try {
-            String value = new String(packet.getData(), "UTF-8");
+            byte[] data = packet.getData();
+            String value = new String(data, "UTF-8");
             String[] parameters = value.split(" ");
             String[] headerBody = value.split("\r\n\r\n", 2);
             String[] version = parameters[1].split("\\.");
 
+            int headerSize = headerBody[0].getBytes().length + new String("\r\n\r\n").getBytes().length;
+            byte chunk[];
+
             switch (parameters[0]) {
                 case "PUTCHUNK":
+                    chunk = Arrays.copyOfRange(data,headerSize,data.length);
                     msg = new PutChunkMessage(new Version(1, 0), Integer.parseInt(parameters[2]), parameters[3],
-                            Integer.parseInt(parameters[4]), Integer.parseInt(parameters[5]), headerBody[1].getBytes());
+                            Integer.parseInt(parameters[4]), Integer.parseInt(parameters[5]), chunk);
                     break;
                 case "STORED":
                     msg = new StoredMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
@@ -190,8 +196,9 @@ public abstract class Message {
                             Integer.parseInt(parameters[2]), parameters[3]);
                     break;
                 case "CHUNK":
+                    chunk = Arrays.copyOfRange(data,headerSize,data.length);
                     msg = new ChunkMessage(new Version(1, 0), Integer.parseInt(parameters[2]), parameters[3],
-                            Integer.parseInt(parameters[4]), headerBody[1].getBytes());
+                            Integer.parseInt(parameters[4]), chunk);
                     break;
                 case "GETCHUNK":
                     msg = new GetChunkMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
