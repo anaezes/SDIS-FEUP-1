@@ -1,4 +1,4 @@
 .idea/
 out/production/Proj/Peer/Main.class
 out/
-filesystem/peers/
+filesystem/*
