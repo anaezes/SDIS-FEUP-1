@@ -53,6 +53,8 @@ public class Peer {
     //store the flags of chunks sent
     private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
 
+    private final HashMap<String, HashSet<Integer>> chunkCount = new HashMap<>();
+
     // Contains communication channel handlers
     public final CommunicationChannels CommunicationChannels;
 
@@ -193,8 +195,6 @@ public class Peer {
         try {
             // Bind the remote object's stub in the registry
             registry.bind( "peer" + this.getPeerId(), control);
-            isInitiatorPeer = true;
-
         } catch (AlreadyBoundException e) {
             e.printStackTrace();
         }
@@ -246,6 +246,10 @@ public class Peer {
 
     public HashMap<String, HashSet<Integer>> getChunksSent() {
         return chunksSent;
+    }
+
+    public HashMap<String, HashSet<Integer>> getChunkCount() {
+        return chunkCount;
     }
 
     public HashMap<String, HashMap<Integer, byte[]>> getRestore() {
