@@ -10,12 +10,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
-
-import static java.lang.Thread.sleep;
 
 public class Restore {
     private final Peer peer;
@@ -38,18 +37,31 @@ public class Restore {
             // pede sequencialmente e colecionar num hashmap<chunkNo, conteúdo>
             getAllChunksFile(file, noChunks);
 
-            //restore file
-            restoreFile(file, fileContent.getBytes().length);
-            Logger.getGlobal().info("Restore file completed");
+            Utils.scheduleAction(() -> {
+                String fileId = Utils.getEncodeHash(file.getName()+file.lastModified());
+                if(!peer.getRestore().containsKey(fileId) || peer.getRestore().get(fileId).size() < noChunks) {
+                        doRestore(file);
+                }
+                else{
+                    //restore file
+                    try {
+                        restoreFile(file, fileContent.getBytes().length, fileId);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Logger.getGlobal().info("Restore file completed");
+                }
+            }, 400);
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
 
-    private void restoreFile(File file, int size) throws IOException {
-        String fileId = Utils.getEncodeHash(file.getName()+file.lastModified());
-        Set entrySet = peer.getRestore().get(fileId).entrySet();
+    private void restoreFile(File file, int size, String fileId) throws IOException {
+        HashMap<String, HashMap<Integer, byte[]>> hash = peer.getRestore();
+        HashMap<Integer, byte[]>  fileChunks = hash.get(fileId);
+        Set entrySet = fileChunks.entrySet();
         Iterator it = entrySet.iterator();
 
         // Iterate through HashMap entries(Key-Value pairs)
@@ -74,12 +86,5 @@ public class Restore {
             GetChunkMessage message = new GetChunkMessage(new Version(1, 0), peer.getPeerId(), fileId, i);
             peer.MessageUtils.sendMessage(message);
         }
-
-        sleep(400);
-
-       /* if(!peer.getRestore().containsKey(fileId))
-            getAllChunksFile(file, noChunks);
-        if(peer.getRestore().get(fileId).size() < noChunks)
-            getAllChunksFile(file, noChunks);*/
     }
 }

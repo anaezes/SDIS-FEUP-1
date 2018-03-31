@@ -8,10 +8,7 @@ import java.net.DatagramPacket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.logging.Logger;
-
-import static java.lang.Thread.sleep;
 
 public class MessageUtils {
     private final Peer peer;
@@ -33,21 +30,23 @@ public class MessageUtils {
         if(!chunk.exists())
             return;
 
-        // calcular tempo de espera (random entre 0 e 400ms)
-        sleep((long )(Math.random() * 400));
-
-        // verificar se entretanto já alguem enviou
-        // se sim, aborta, se não envio
-        if(peer.getChunksSent().containsKey(message.getFileId())) {
-            if (peer.getChunksSent().get(message.getFileId()).contains(message.getChunkNo())) {
-                return;
+        Utils.scheduleAction(() -> {
+            // verificar se entretanto já alguem enviou
+            // se sim, aborta, se não envio
+            if(peer.getChunksSent().containsKey(message.getFileId())) {
+                if (peer.getChunksSent().get(message.getFileId()).contains(message.getChunkNo())) {
+                    return;
+                }
             }
-        }
-        //send message STORED chunk
-        ChunkMessage chunkMessage = new ChunkMessage(new Version(1, 0), peer.getPeerId(), message.getFileId(),
-                message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
-        sendMessage(chunkMessage);
-
+            try {
+                //send message STORED chunk
+                ChunkMessage chunkMessage = new ChunkMessage(new Version(1, 0), peer.getPeerId(), message.getFileId(),
+                        message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
+                sendMessage(chunkMessage);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }, (long )(Math.random() * 400));
     }
 
     public void handleDeleteMessage(DeleteMessage message) throws IOException {

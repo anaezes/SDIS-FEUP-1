@@ -5,6 +5,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class Utils {
     public static boolean deleteFile(File file) {
@@ -89,5 +92,11 @@ public class Utils {
         }
 
         return Arrays.copyOf(bytes, i + 1);
+    }
+
+    public static void scheduleAction(Runnable run, long timeMs) {
+        ScheduledThreadPoolExecutor scheduler =
+                (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1);
+        scheduler.schedule(run, timeMs, TimeUnit.MILLISECONDS);
     }
 }
