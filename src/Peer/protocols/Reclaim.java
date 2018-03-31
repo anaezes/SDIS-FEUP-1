@@ -47,8 +47,15 @@ public class Reclaim {
 
     private boolean removeChunkFromDisk(ChunkMetadata metadata) {
         File chunk = Paths.get(peer.getFileSystemPath(), metadata.getFileId(), Integer.toString(metadata.getChunkNo())).toFile();
-        if (chunk.exists()) chunk.delete();
-        else return false;
+        if (chunk.exists()){
+            boolean deleted = chunk.delete();
+            if (deleted) Logger.getGlobal().info("Chunk removed: " + chunk.getAbsolutePath());
+            else Logger.getGlobal().warning("Chunk couldn't be removed: " + chunk.getAbsolutePath());
+        }
+        else {
+            Logger.getGlobal().warning("Chunk not found: " + chunk.getAbsolutePath());
+            return false;
+        }
 
         File chunkFolder = chunk.getParentFile();
         if (chunkFolder.list().length == 0) chunkFolder.delete();

@@ -1,5 +1,6 @@
 package Peer;
 
+import Common.messages.Version;
 import Common.remote.IControl;
 import Peer.protocols.Controller;
 
@@ -20,14 +21,17 @@ import java.util.logging.Logger;
 
 public class Peer {
     private static final int NUMBER_TRIES = 3;
+    private final int CHUNKSIZE = 64000;
+    public final long DELAY_MS = 400;
+    private final String DEFAULT_STORAGE_CAPACITY = "1m"; //150 kilobytes
+
     private final String FILES_DIRECTORY = System.getProperty("user.dir") + File.separator +"filesystem" + File.separator
             + "peers" + File.separator +"peer";
     private final String CLIENT_DIRECTORY = System.getProperty("user.dir") + File.separator + "filesystem" +
             File.separator + "client" + File.separator;
 
-    private final int CHUNKSIZE = 64000;
     private final long STORAGE_CAPACITY;
-    private final String DEFAULT_STORAGE_CAPACITY = "1m"; //150 kilobytes
+    public final Version PROTOCOL_VERSION;
 
     private final int peerId;
     public boolean isInitiatorPeer = false;
@@ -102,6 +106,7 @@ public class Peer {
         Logger.getGlobal().info("Creating Peer...");
         this.peerId = Integer.parseInt(args[0]);
         IgnorePutChunkUID = new ArrayList<>();
+        PROTOCOL_VERSION = new Version(1, 0);
 
         // Verify if this peer base directory exists. If not creates it.
         initFilesystem();
@@ -331,12 +336,14 @@ public class Peer {
 
     public void validateStorageCapacity() {
         if (getFreeCapacity() < 0) {
-            Logger.getGlobal().info("Starting reclaiming process...");
-            try {
-                ProtocolController.reclaim();
-            } catch (RemoteException e) {
-                Logger.getGlobal().warning("Couldn't reclaim space: " + e.getLocalizedMessage());
-            }
+            Utils.scheduleAction(() -> {
+                Logger.getGlobal().info("Starting reclaiming process...");
+                try {
+                    ProtocolController.reclaim();
+                } catch (RemoteException e) {
+                    Logger.getGlobal().warning("Couldn't reclaim space: " + e.getLocalizedMessage());
+                }
+            }, DELAY_MS * 2);
         }
     }
 
@@ -356,6 +363,6 @@ public class Peer {
                         Logger.getGlobal().info("Removed chunk from PutChunk ignore list? " + result);
 
                     }
-                }, 500);
+                }, DELAY_MS + 100);
     }
 }

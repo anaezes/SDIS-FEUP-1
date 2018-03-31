@@ -49,7 +49,7 @@ public class MessageUtils {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }, (long )(Math.random() * 400));
+        }, (long )(Math.random() * peer.DELAY_MS));
     }
 
     public void handleDeleteMessage(DeleteMessage message) {
@@ -76,20 +76,24 @@ public class MessageUtils {
 
         if (metadata.getPeerIds().size() < metadata.getRepDeg()) {
             lastPutChunkReceived = null;
-            try {
-                byte[] chunk = Utils.getChunkFromFilesystem(peer, metadata.getFileId(), metadata.getChunkNo());
-                if (chunk != null) {
-                    sleep((long)Math.random() * 400);
-                    if (lastPutChunkReceived == null || lastPutChunkReceived.getChunkUID() != message.getChunkUID()) {
-                        PutChunkMessage pcMessage = new PutChunkMessage(new Version(1,0), peer.getPeerId(),
-                                metadata.getFileId(), metadata.getChunkNo(), metadata.getRepDeg(), chunk);
-                        peer.MessageUtils.sendMessage(pcMessage); // If it hasn't received a PutChunk message to the same chunk
-                    }
-                    else Logger.getGlobal().info("Already received PutChunk for this chunk, aborting starting backup subprotocol");
-                } else Logger.getGlobal().info("Chunk not found in peer filesystem, ignoring");
+            byte[] chunk = Utils.getChunkFromFilesystem(peer, metadata.getFileId(), metadata.getChunkNo());
 
-            } catch (InterruptedException e) {
-                Logger.getGlobal().warning("Couldn't wait to send PutChunk message: " + e.getLocalizedMessage());
+            if (chunk == null) Logger.getGlobal().info("Chunk not found in peer filesystem, ignoring");
+            else {
+                Utils.scheduleAction(() -> {
+                    try {
+                        if (lastPutChunkReceived == null || lastPutChunkReceived.getChunkUID() != message.getChunkUID()) {
+                            PutChunkMessage pcMessage = new PutChunkMessage(new Version(1, 0), peer.getPeerId(),
+                                    metadata.getFileId(), metadata.getChunkNo(), metadata.getRepDeg(), chunk);
+
+                            peer.MessageUtils.sendMessage(pcMessage); // If it hasn't received a PutChunk message to the same chunk
+
+                        } else
+                            Logger.getGlobal().info("Already received PutChunk for this chunk, aborting starting backup subprotocol");
+                    } catch (IOException e) {
+                        Logger.getGlobal().warning("Couldn't wait to send PutChunk message: " + e.getLocalizedMessage());
+                    }
+                }, peer.DELAY_MS);
             }
         }
     }
@@ -134,7 +138,7 @@ public class MessageUtils {
                 e.printStackTrace();
             }
 
-        }, (long )(Math.random() * 400));
+        }, (long )(Math.random() * peer.DELAY_MS));
 
         Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
         if (!Files.exists(path))

@@ -51,7 +51,7 @@ public class Restore {
                     }
                     Logger.getGlobal().info("Restore file completed");
                 }
-            }, 400);
+            }, peer.DELAY_MS);
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
