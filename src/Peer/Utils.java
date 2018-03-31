@@ -1,7 +1,11 @@
 package Peer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -114,5 +118,13 @@ public class Utils {
         }
 
         return Long.parseLong(arg);
+    }
+
+    public static byte[] getChunkFromFilesystem(Peer peer, String fileId, int chunkNo) throws IOException {
+        Path path = Paths.get(peer.getFileSystemPath(), fileId, Integer.toString(chunkNo));
+        File file = path.toFile();
+        if  (file.exists())
+            return Files.readAllBytes(path);
+        else return null;
     }
 }

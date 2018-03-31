@@ -59,6 +59,9 @@ public class Peer {
     //store how many peers saved the chunk
     private final ConcurrentHashMap<String, ChunkMetadata> chunkCount = new ConcurrentHashMap<>();
 
+    //store the chunks to be ignored when received in a PutChunk message
+    private final ArrayList<String> IgnorePutChunkUID;
+
     // Contains communication channel handlers
     public final CommunicationChannels CommunicationChannels;
 
@@ -98,6 +101,7 @@ public class Peer {
     public Peer(String[] args) throws IOException {
         Logger.getGlobal().info("Creating Peer...");
         this.peerId = Integer.parseInt(args[0]);
+        IgnorePutChunkUID = new ArrayList<>();
 
         // Verify if this peer base directory exists. If not creates it.
         initFilesystem();
@@ -301,10 +305,14 @@ public class Peer {
         return STORAGE_CAPACITY - getUsedCapacity();
     }
 
+    public ArrayList<String> getIgnorePutChunkUID() {
+        return IgnorePutChunkUID;
+    }
+
     public void logCapacityInfo() {
         Logger.getGlobal().info("Peer storage capacity is: " + STORAGE_CAPACITY + " bytes\n" +
                 "Peer used capacity is: " + getUsedCapacity() + " bytes (" + ((float)getUsedCapacity()/STORAGE_CAPACITY*100) + "%)\n" +
-                "Peer free capacity is: " + getFreeCapacity() + " bytes (" + ((float)getFreeCapacity()/STORAGE_CAPACITY*100) + "%)\n");
+                "Peer free capacity is: " + getFreeCapacity() + " bytes (" + ((float)getFreeCapacity()/STORAGE_CAPACITY*100) + "%)");
     }
 
     /**
@@ -325,11 +333,31 @@ public class Peer {
 
     public void validateStorageCapacity() {
         if (getFreeCapacity() < 0) {
+            Logger.getGlobal().info("Starting reclaiming process...");
             try {
                 ProtocolController.reclaim();
             } catch (RemoteException e) {
                 Logger.getGlobal().warning("Couldn't reclaim space: " + e.getLocalizedMessage());
             }
         }
+    }
+
+    /**
+     * Ignores a PutChunk message that has the given chunkUID
+     * Used to ignore when a Removed message is sent
+     * @param chunkUID the chunk unique identifier to be ignored
+     */
+    public void ignorePutChunkUID(String chunkUID) {
+        Logger.getGlobal().info("Added chunk to PutChunk ignore: " + chunkUID);
+        getIgnorePutChunkUID().add(chunkUID);
+        new Timer().schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        boolean result = getIgnorePutChunkUID().remove(chunkUID);
+                        Logger.getGlobal().info("Removed chunk from PutChunk ignore list? " + result);
+
+                    }
+                }, 500);
     }
 }

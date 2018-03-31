@@ -65,10 +65,14 @@ public class CommunicationChannels {
 
                 // Stores all peers that have the given chunk. Must be done even if the senderId == peerId
                 if (message instanceof StoredMessage) {
-                    ChunkMetadata metadata = peer.getChunkCount().getOrDefault(message.getChunkUID(),
-                            new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
-                    metadata.getPeerIds().add(message.getSenderId());
-                    peer.getChunkCount().put(message.getChunkUID(), metadata);
+                    ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
+                    if (metadata != null) {
+                        metadata.getPeerIds().add(message.getSenderId());
+                        peer.getChunkCount().put(message.getChunkUID(), metadata);
+                    }
+                // Unlists the peer from chunk. Must be done even if the senderId == peerId
+                } else if (message instanceof RemovedMessage) {
+                    peer.MessageUtils.handleRemovedMessage((RemovedMessage)message);
                 }
 
                 if(message.getSenderId() == peer.getPeerId()) {
@@ -85,12 +89,8 @@ public class CommunicationChannels {
                     peer.MessageUtils.handleDeleteMessage((DeleteMessage) message);
                 }
                 else if(message instanceof GetChunkMessage){
-                peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
+                    peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
                 }
-                else if (message instanceof RemovedMessage) {
-                    // TODO handle removed message
-                }
-
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
@@ -109,10 +109,14 @@ public class CommunicationChannels {
                 peer.getMdbSocket().receive(packet);
 
                 Message message = Message.parseMessage(packet);
-                Logger.getGlobal().info("Received message on MDB Channel: " + message.getMessageType());
+                Logger.getGlobal().info("Received message on MDB Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
-                if(message instanceof PutChunkMessage)
+                if(message instanceof PutChunkMessage) {
+                    peer.getChunkCount().put(message.getChunkUID(),
+                            new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
+
                     peer.MessageUtils.handlePutChunkMessage((PutChunkMessage) message);
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();
