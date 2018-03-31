@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.logging.Logger;
 
 public class CommunicationChannels {
@@ -61,12 +60,24 @@ public class CommunicationChannels {
             try {
                 peer.getMcSocket().receive(packet);
                 Message message = Message.parseMessage(packet);
+
                 Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
-                if(message.getSenderId() == peer.getPeerId())
+                // Stores all peers that have the given chunk. Must be done even if the senderId == peerId
+                if (message instanceof StoredMessage) {
+                    ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
+                    if (metadata != null) {
+                        metadata.getPeerIds().add(message.getSenderId());
+                        peer.getChunkCount().put(message.getChunkUID(), metadata);
+                    }
+                // Unlists the peer from chunk. Must be done even if the senderId == peerId
+                } else if (message instanceof RemovedMessage) {
+                    peer.MessageUtils.handleRemovedMessage((RemovedMessage)message);
+                }
+
+                if(message.getSenderId() == peer.getPeerId()) {
                     continue;
-
-
+                }
                     if (message instanceof StoredMessage) {
                         if(peer.isInitiatorPeer) {
                             //store sent ack
@@ -78,9 +89,11 @@ public class CommunicationChannels {
                         }
                         else {
                             synchronized (peer.getChunkCount()) {
-                                HashSet<Integer> set = peer.getChunkCount().getOrDefault(message.getFileId() + message.getChunkNo(), new HashSet<>());
-                                set.add(message.getSenderId());
-                                peer.getChunkCount().putIfAbsent(message.getFileId()+ message.getChunkNo(), set);
+                                ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
+                                if (metadata != null) {
+                                    metadata.getPeerIds().add(message.getSenderId());
+                                    peer.getChunkCount().putIfAbsent(message.getFileId()+ message.getChunkNo(), metadata);
+                                }
                             }
                         }
                     } else if (message instanceof DeleteMessage) {
@@ -88,7 +101,6 @@ public class CommunicationChannels {
                     } else if (message instanceof GetChunkMessage) {
                         peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
                     }
-
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
@@ -107,10 +119,14 @@ public class CommunicationChannels {
                 peer.getMdbSocket().receive(packet);
 
                 Message message = Message.parseMessage(packet);
-                Logger.getGlobal().info("Received message on MDB Channel: " + message.getMessageType());
+                Logger.getGlobal().info("Received message on MDB Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
-                if(message instanceof PutChunkMessage)
+                if(message instanceof PutChunkMessage) {
+                    peer.getChunkCount().put(message.getChunkUID(),
+                            new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
+
                     peer.MessageUtils.handlePutChunkMessage((PutChunkMessage) message);
+                }
 
             } catch (IOException e) {
                 e.printStackTrace();

@@ -1,7 +1,11 @@
 package Peer;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -97,5 +101,38 @@ public class Utils {
 
     public static void scheduleAction(Runnable run, long timeMs) {
         scheduler.schedule(run, timeMs, TimeUnit.MILLISECONDS);
+    }
+
+    public static long directorySize(File dir) {
+        long size = 0;
+        if (dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            for (int i = 0; i < files.length; i++) size += directorySize(files[i]);
+            return size;
+        } else if (dir.isFile()) return dir.length();
+        else return 0;
+    }
+
+    public static long parseSizeArg(String arg) {
+        if (arg.toLowerCase().endsWith("k")) {
+            String number = arg.substring(0, arg.length() - 1);
+            return Long.parseLong(number) * (long)1e3;
+        } else if (arg.toLowerCase().endsWith("m")) {
+            String number = arg.substring(0, arg.length() - 1);
+            return Long.parseLong(number) * (long)1e6;
+        } else if (arg.toLowerCase().endsWith("g")) {
+            String number = arg.substring(0, arg.length() - 1);
+            return Long.parseLong(number) * (long) 1e9;
+        }
+
+        return Long.parseLong(arg);
+    }
+
+    public static byte[] getChunkFromFilesystem(Peer peer, String fileId, int chunkNo) throws IOException {
+        Path path = Paths.get(peer.getFileSystemPath(), fileId, Integer.toString(chunkNo));
+        File file = path.toFile();
+        if  (file.exists())
+            return Files.readAllBytes(path);
+        else return null;
     }
 }

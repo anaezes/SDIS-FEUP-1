@@ -8,12 +8,14 @@ import java.net.DatagramPacket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
 import java.util.logging.Logger;
+
+import static java.lang.Thread.sleep;
 
 public class MessageUtils {
     private final Peer peer;
     private final int NUMBER_TRIES;
+    private PutChunkMessage lastPutChunkReceived; // To handleDeleteMessage know if was received before sending
 
     public MessageUtils(Peer peer, int numberOfTries) {
         this.peer = peer;
@@ -50,7 +52,7 @@ public class MessageUtils {
         }, (long )(Math.random() * 400));
     }
 
-    public void handleDeleteMessage(DeleteMessage message) throws IOException {
+    public void handleDeleteMessage(DeleteMessage message) {
         if(message.getSenderId() == peer.getPeerId())
             return;
 
@@ -63,21 +65,56 @@ public class MessageUtils {
             Logger.getGlobal().severe("Couldn't delete file: " + file.getAbsolutePath());
     }
 
+    public void handleRemovedMessage(RemovedMessage message) throws IOException {
+        ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
+        metadata.getPeerIds().remove(message.getSenderId());
+
+        if (message.getSenderId() == peer.getPeerId()) {
+            peer.ignorePutChunkUID(message.getChunkUID());
+            return;
+        }
+
+        if (metadata.getPeerIds().size() < metadata.getRepDeg()) {
+            lastPutChunkReceived = null;
+            try {
+                byte[] chunk = Utils.getChunkFromFilesystem(peer, metadata.getFileId(), metadata.getChunkNo());
+                if (chunk != null) {
+                    sleep((long)Math.random() * 400);
+                    if (lastPutChunkReceived == null || lastPutChunkReceived.getChunkUID() != message.getChunkUID()) {
+                        PutChunkMessage pcMessage = new PutChunkMessage(new Version(1,0), peer.getPeerId(),
+                                metadata.getFileId(), metadata.getChunkNo(), metadata.getRepDeg(), chunk);
+                        peer.MessageUtils.sendMessage(pcMessage); // If it hasn't received a PutChunk message to the same chunk
+                    }
+                    else Logger.getGlobal().info("Already received PutChunk for this chunk, aborting starting backup subprotocol");
+                } else Logger.getGlobal().info("Chunk not found in peer filesystem, ignoring");
+
+            } catch (InterruptedException e) {
+                Logger.getGlobal().warning("Couldn't wait to send PutChunk message: " + e.getLocalizedMessage());
+            }
+        }
+    }
+
     /**
      * Creates root directory, if non-existent, and stores the received chunk
      * @param message
      */
     public void handlePutChunkMessage(PutChunkMessage message) throws IOException {
+        lastPutChunkReceived = message;
 
+        // Ignores if message comes from own peer
         if(message.getSenderId() == peer.getPeerId())
             return;
 
+        // Ignores message if chunk is listed in the IgnorePutChunk array
+        if (peer.getIgnorePutChunkUID().contains(message.getChunkUID())) {
+            Logger.getGlobal().info("Chunk listed in the ignore list, ignoring message...");
+            return;
+        }
+
         Utils.scheduleAction(() -> {
             synchronized (peer.getChunkCount()) {
-                String hash = message.getFileId() + message.getChunkNo();
-
-                if (peer.getChunkCount().containsKey(hash)) {
-                    if (peer.getChunkCount().get(hash).size() >= message.getReplicationDeg()) {
+                if (peer.getChunkCount().containsKey(message.getChunkUID())) {
+                    if (peer.getChunkCount().get(message.getChunkUID()).getPeerIds().size() >= message.getReplicationDeg()) {
                         Logger.getGlobal().info("Replication degree reached, not storing chunk...");
                         return;
                     }
@@ -99,6 +136,18 @@ public class MessageUtils {
 
         }, (long )(Math.random() * 400));
 
+        Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
+        if (!Files.exists(path))
+            Files.createDirectory(path);
+        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
+
+        //send message STORED chunk
+        StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
+                message.getChunkNo());
+        sendMessage(storedMessage);
+
+        peer.logCapacityInfo();
+        peer.validateStorageCapacity();
     }
 
     /**
@@ -129,6 +178,10 @@ public class MessageUtils {
                 peer.getMdrSocket().send(packet);
                 break;
             case GETCHUNK:
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
+                peer.getMcSocket().send(packet);
+                break;
+            case REMOVED:
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                 peer.getMcSocket().send(packet);
                 break;

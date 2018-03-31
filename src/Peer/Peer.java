@@ -14,6 +14,7 @@ import java.rmi.registry.Registry;
 import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -25,6 +26,8 @@ public class Peer {
             File.separator + "client" + File.separator;
 
     private final int CHUNKSIZE = 64000;
+    private final long STORAGE_CAPACITY;
+    private final String DEFAULT_STORAGE_CAPACITY = "1m"; //150 kilobytes
 
     private final int peerId;
     public boolean isInitiatorPeer = false;
@@ -53,7 +56,11 @@ public class Peer {
     //store the flags of chunks sent
     private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
 
-    private final HashMap<String, HashSet<Integer>> chunkCount = new HashMap<>();
+    //store how many peers saved the chunk
+    private final ConcurrentHashMap<String, ChunkMetadata> chunkCount = new ConcurrentHashMap<>();
+
+    //store the chunks to be ignored when received in a PutChunk message
+    private final ArrayList<String> IgnorePutChunkUID;
 
     // Contains communication channel handlers
     public final CommunicationChannels CommunicationChannels;
@@ -66,9 +73,14 @@ public class Peer {
 
     public static void main(String[] args) {
         if (args.length < 3) {
-            System.out.println("Usage: java Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT>");
+            System.out.println("Usage: java Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT> [capacity=1m]");
+            System.out.println("\tcapacity in bytes or suffixed with [k, m, g]");
+            System.out.println("\tk - Kilobyte");
+            System.out.println("\tm - Megabyte");
+            System.out.println("\tg - Gigabyte");
             return;
         }
+
         Logger.getGlobal().setLevel(Level.ALL);
         System.setProperty("java.util.logging.SimpleFormatter.format", "%1$tb %1$td, %1$tY %1$tl:%1$tM:%1$tS %1$Tp %2$s%n%4$s: %5$s%n\n");
 
@@ -89,9 +101,12 @@ public class Peer {
     public Peer(String[] args) throws IOException {
         Logger.getGlobal().info("Creating Peer...");
         this.peerId = Integer.parseInt(args[0]);
+        IgnorePutChunkUID = new ArrayList<>();
 
         // Verify if this peer base directory exists. If not creates it.
         initFilesystem();
+        STORAGE_CAPACITY = Utils.parseSizeArg(args.length > 7 ? args[7] : DEFAULT_STORAGE_CAPACITY);
+        logCapacityInfo();
 
         // Creates communication channel handlers
         this.CommunicationChannels = new CommunicationChannels(this, CHUNKSIZE);
@@ -248,12 +263,12 @@ public class Peer {
         return chunksSent;
     }
 
-    public HashMap<String, HashSet<Integer>> getChunkCount() {
-        return chunkCount;
-    }
-
     public HashMap<String, HashMap<Integer, byte[]>> getRestore() {
         return restore;
+    }
+
+    public ConcurrentHashMap<String, ChunkMetadata> getChunkCount() {
+        return chunkCount;
     }
 
     public InetAddress getMcAddr() {
@@ -280,6 +295,24 @@ public class Peer {
         return mdrPort;
     }
 
+    public long getUsedCapacity() {
+        return Utils.directorySize(new File(getFileSystemPath()));
+    }
+
+    public long getFreeCapacity() {
+        return STORAGE_CAPACITY - getUsedCapacity();
+    }
+
+    public ArrayList<String> getIgnorePutChunkUID() {
+        return IgnorePutChunkUID;
+    }
+
+    public void logCapacityInfo() {
+        Logger.getGlobal().info("Peer storage capacity is: " + STORAGE_CAPACITY + " bytes\n" +
+                "Peer used capacity is: " + getUsedCapacity() + " bytes (" + ((float)getUsedCapacity()/STORAGE_CAPACITY*100) + "%)\n" +
+                "Peer free capacity is: " + getFreeCapacity() + " bytes (" + ((float)getFreeCapacity()/STORAGE_CAPACITY*100) + "%)");
+    }
+
     /**
     * Get peer id
     * @return peerId
@@ -296,4 +329,33 @@ public class Peer {
         return FILES_DIRECTORY + this.peerId;
     }
 
+    public void validateStorageCapacity() {
+        if (getFreeCapacity() < 0) {
+            Logger.getGlobal().info("Starting reclaiming process...");
+            try {
+                ProtocolController.reclaim();
+            } catch (RemoteException e) {
+                Logger.getGlobal().warning("Couldn't reclaim space: " + e.getLocalizedMessage());
+            }
+        }
+    }
+
+    /**
+     * Ignores a PutChunk message that has the given chunkUID
+     * Used to ignore when a Removed message is sent
+     * @param chunkUID the chunk unique identifier to be ignored
+     */
+    public void ignorePutChunkUID(String chunkUID) {
+        Logger.getGlobal().info("Added chunk to PutChunk ignore: " + chunkUID);
+        getIgnorePutChunkUID().add(chunkUID);
+        new Timer().schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        boolean result = getIgnorePutChunkUID().remove(chunkUID);
+                        Logger.getGlobal().info("Removed chunk from PutChunk ignore list? " + result);
+
+                    }
+                }, 500);
+    }
 }
