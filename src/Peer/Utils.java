@@ -10,6 +10,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class Utils {
+    private static final ScheduledThreadPoolExecutor scheduler = (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(5);
     public static boolean deleteFile(File file) {
         if (file.isDirectory()) {
             File[] children = file.listFiles();
@@ -95,8 +96,6 @@ public class Utils {
     }
 
     public static void scheduleAction(Runnable run, long timeMs) {
-        ScheduledThreadPoolExecutor scheduler =
-                (ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1);
         scheduler.schedule(run, timeMs, TimeUnit.MILLISECONDS);
     }
 }
