@@ -117,41 +117,31 @@ public class MessageUtils {
 
         Utils.scheduleAction(() -> {
             synchronized (peer.getChunkCount()) {
-                if (peer.getChunkCount().containsKey(message.getChunkUID())) {
-                    if (peer.getChunkCount().get(message.getChunkUID()).getPeerIds().size() >= message.getReplicationDeg()) {
-                        Logger.getGlobal().info("Replication degree reached, not storing chunk...");
-                        return;
-                    }
+                if (peer.getChunkCount().containsKey(message.getChunkUID()) &&
+                        peer.getChunkCount().get(message.getChunkUID()).getPeerIds().size() >= message.getReplicationDeg()) {
+                    Logger.getGlobal().info("Replication degree reached, not storing chunk...");
+                    return;
                 }
             }
-            Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
+
             try {
+                StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(),
+                        message.getFileId(), message.getChunkNo());
+                //send message STORED chunk
+                sendMessage(storedMessage);
+            Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
                 if (!Files.exists(path))
                     Files.createDirectory(path);
                 Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
 
-                //send message STORED chunk
-                StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
-                        message.getChunkNo());
-                sendMessage(storedMessage);
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
 
+            peer.logCapacityInfo();
+            peer.validateStorageCapacity();
         }, (long )(Math.random() * peer.DELAY_MS));
-
-        Path path = Paths.get(peer.getFileSystemPath() + "/" + message.getFileId());
-        if (!Files.exists(path))
-            Files.createDirectory(path);
-        Files.write(Paths.get(path.toString() + "/" + message.getChunkNo()), Utils.trim(message.getBody()));
-
-        //send message STORED chunk
-        StoredMessage storedMessage = new StoredMessage(message.getVersion(), peer.getPeerId(), message.getFileId(),
-                message.getChunkNo());
-        sendMessage(storedMessage);
-
-        peer.logCapacityInfo();
-        peer.validateStorageCapacity();
     }
 
     /**
