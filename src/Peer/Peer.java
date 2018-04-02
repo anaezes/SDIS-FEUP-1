@@ -15,6 +15,7 @@ import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -72,8 +73,11 @@ public class Peer {
     // Contains handlers to all implemented protocols
     public final Controller ProtocolController;
 
-    //store how many peers saved the chunk
+    // Stores how many peers saved the chunk
     private ConcurrentHashMap<String, ChunkMetadata> chunkCount = new ConcurrentHashMap<>();
+
+    // Stores the files that were requested to delete
+    private ConcurrentLinkedQueue<String> deletedFiles = new ConcurrentLinkedQueue<>();
 
     public static void main(String[] args) {
         if (args.length < 3) {
@@ -124,6 +128,7 @@ public class Peer {
         // Loads peer metadata files
         Logger.getGlobal().info("Searching for peer metadata files");
         loadChunkCountFromDisk();
+        loadDeletedFilesFromDisk();
 
         // Initiates communication channels
         initControlChannel(args[1], args[2]);
@@ -315,6 +320,19 @@ public class Peer {
         return IgnorePutChunkUID;
     }
 
+    public ConcurrentLinkedQueue<String> getDeletedFiles() {
+        return deletedFiles;
+    }
+
+    public void addDeletedFile(String fileId) {
+        synchronized (deletedFiles) {
+            for (String id : deletedFiles)
+                if (id.equals(fileId))
+                    return;
+            deletedFiles.add(fileId);
+        }
+    }
+
     public void logCapacityInfo() {
         Logger.getGlobal().info("Peer storage capacity is: " + STORAGE_CAPACITY + " bytes\n" +
                 "Peer used capacity is: " + getUsedCapacity() + " bytes (" + ((float)getUsedCapacity()/STORAGE_CAPACITY*100) + "%)\n" +
@@ -375,8 +393,7 @@ public class Peer {
     public void saveChunkCountToDisk() {
         Logger.getGlobal().info("Saving chunk count to disk");
         try {
-            //if (!getChunkCountFile().exists()) getChunkCountFile().createNewFile();
-            FileOutputStream fos = new FileOutputStream(getChunkCountFile(), false);
+            FileOutputStream fos = new FileOutputStream(getChunkCountFilePath(), false);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
             oos.writeObject(chunkCount);
             oos.flush();
@@ -390,26 +407,62 @@ public class Peer {
     }
 
     private void loadChunkCountFromDisk() {
-        if (!new File(getChunkCountFile()).exists()) return;
+        if (!new File(getChunkCountFilePath()).exists()) return;
         try {
-        Logger.getGlobal().info("Loading chunk count from disk");
-            FileInputStream fis = new FileInputStream(getChunkCountFile());
+            Logger.getGlobal().info("Loading chunk count from disk");
+            FileInputStream fis = new FileInputStream(getChunkCountFilePath());
             ObjectInputStream ois = new ObjectInputStream(fis);
+            chunkCount = (ConcurrentHashMap<String, ChunkMetadata>) ois.readObject();
             ois.close();
             fis.close();
-            chunkCount = (ConcurrentHashMap<String, ChunkMetadata>) ois.readObject();
         } catch (FileNotFoundException e) {
-            Logger.getGlobal().warning("FileNotFoundException while loading chunk to disk: " + e.getLocalizedMessage());
+            Logger.getGlobal().warning("FileNotFoundException while loading chunk count from disk: " + e.getLocalizedMessage());
         } catch (IOException e) {
-            Logger.getGlobal().warning("IOException while loading chunk to disk: " + e.getLocalizedMessage());
+            Logger.getGlobal().warning("IOException while loading chunk count from disk: " + e.getLocalizedMessage());
         } catch (ClassNotFoundException e) {
-            Logger.getGlobal().warning("ClassNotFoundException while loading chunk to disk: " + e.getLocalizedMessage());
+            Logger.getGlobal().warning("ClassNotFoundException while loading chunk count from disk: " + e.getLocalizedMessage());
         }
-
     }
 
-    private String getChunkCountFile() {
+    public void saveDeletedFilesToDisk() {
+        Logger.getGlobal().info("Saving deleted files to disk");
+        try {
+            FileOutputStream fos = new FileOutputStream(getChunkCountFilePath(), false);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(chunkCount);
+            oos.flush();
+            oos.close();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Logger.getGlobal().warning("FileNotFoundException while saving chunk count to disk: " + e.getLocalizedMessage());
+        } catch (IOException e) {
+            Logger.getGlobal().warning("IOException while saving chunk count to disk: " + e.getLocalizedMessage());
+        }
+    }
+
+    private void loadDeletedFilesFromDisk() {
+        if (!new File(getDeletedFilesFilePath()).exists()) return;
+        try {
+            Logger.getGlobal().info("Loading deleted files from disk");
+            FileInputStream fis = new FileInputStream(getDeletedFilesFilePath());
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            deletedFiles = (ConcurrentLinkedQueue<String>) ois.readObject();
+            ois.close();
+            fis.close();
+        } catch (FileNotFoundException e) {
+            Logger.getGlobal().warning("FileNotFoundException while loading deleted files from disk: " + e.getLocalizedMessage());
+        } catch (IOException e) {
+            Logger.getGlobal().warning("IOException while loading deleted files from disk: " + e.getLocalizedMessage());
+        } catch (ClassNotFoundException e) {
+            Logger.getGlobal().warning("ClassNotFoundException while loading deleted files from disk: " + e.getLocalizedMessage());
+        }
+    }
+
+    private String getChunkCountFilePath() {
         return Paths.get(getFileSystemPath(), ".metadata-chunkCount").toString();
     }
 
+    private String getDeletedFilesFilePath() {
+        return Paths.get(getFileSystemPath(), ".metadata-deletedFiles").toString();
+    }
 }
