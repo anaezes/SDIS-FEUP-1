@@ -18,4 +18,8 @@ public class PutChunkMessage extends Message {
         System.arraycopy(this.getBody(), 0, message, header.length, this.getBody().length);
         return message;
     }
+
+    public int getChunkSize() {
+        return getBody().length;
+    }
 }

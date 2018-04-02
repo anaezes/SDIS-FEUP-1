@@ -14,6 +14,7 @@ public class Controller implements IControl {
     private final Restore restore;
     private final Delete delete;
     private final Reclaim reclaim;
+    private final State state;
     private final ValidateDeleted validateDeleted;
 
     public Controller(Peer peer, String clientDirectory, int chunksize) {
@@ -25,6 +26,7 @@ public class Controller implements IControl {
         restore = new Restore(peer, CLIENT_DIRECTORY, CHUNKSIZE);
         delete = new Delete(peer);
         reclaim = new Reclaim(peer);
+        state = new State(peer);
         validateDeleted = new ValidateDeleted(peer);
     }
 
@@ -59,6 +61,11 @@ public class Controller implements IControl {
     public String reclaim() throws RemoteException {
         reclaim.doReclaim();
         return "Operation reclaim...";
+    }
+
+    @Override
+    public String state() throws RemoteException {
+        return state.getState();
     }
 
     public void validateDeleted() {

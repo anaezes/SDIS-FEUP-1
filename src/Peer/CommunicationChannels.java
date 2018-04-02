@@ -134,7 +134,7 @@ public class CommunicationChannels {
 
                 if (message instanceof PutChunkMessage) {
                     peer.getChunkCount().put(message.getChunkUID(),
-                            new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
+                            new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg(), ((PutChunkMessage) message).getChunkSize()));
                     peer.saveChunkCountToDisk();
                     peer.MessageUtils.handlePutChunkMessage((PutChunkMessage) message);
                 }

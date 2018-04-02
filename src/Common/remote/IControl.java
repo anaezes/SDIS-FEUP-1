@@ -9,4 +9,5 @@ public interface IControl extends Remote {
     String delete (File file) throws RemoteException;
     String restore (File file) throws RemoteException;
     String reclaim () throws RemoteException;
+    String state () throws RemoteException;
 }

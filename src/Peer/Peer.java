@@ -139,7 +139,7 @@ public class Peer {
         initRMIChannel(1099);
 
         // Initializes server TCP socket
-        tcpSocket = new ServerSocket(peerId*10, 0, InetAddress.getByName("localhost"));
+        tcpSocket = new ServerSocket(peerId + 6000, 0, InetAddress.getByName("localhost"));
 
         // Checks if any deleted request was made while peer was offline
         ProtocolController.validateDeleted();
@@ -480,5 +480,10 @@ public class Peer {
 
     private String getDeletedFilesFilePath() {
         return Paths.get(getFileSystemPath(), ".metadata-deletedFiles").toString();
+    }
+
+    public String toString() {
+        String text = "\n" + "File pathname: " + FILES_DIRECTORY + this.peerId + File.separator;
+     return text;
     }
 }

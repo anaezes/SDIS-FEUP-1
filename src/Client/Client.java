@@ -77,28 +77,33 @@ public class Client {
         String response;
         File file = new File(FILES_DIRECTORY+fileName);
 
-        if(!file.exists())
-            throw new IOException();
-
         switch (getOperation()) {
             case "BACKUP":
-                //String fileContent = new String(Files.readAllBytes(Paths.get(FILES_DIRECTORY+fileName)));
+                if(!file.exists())
+                    throw new IOException();
                 response = control.backup(file, replication);
                 break;
             case "DELETE":
+                if(!file.exists())
+                    throw new IOException();
                 response = control.delete(file);
                 break;
             case "RESTORE":
+                if(!file.exists())
+                    throw new IOException();
                 response = control.restore(file);
                 break;
             case "RECLAIM":
                 response = control.reclaim();
                 break;
+            case "STATE":
+                response = control.state();
+                break;
             default:
                 response = "Invalid Operation";
         }
 
-        Logger.getGlobal().info("Response: " + response);
+        System.out.println("Response: " + response);
     }
 
     public String getOperation() {
