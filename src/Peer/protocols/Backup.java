@@ -76,10 +76,12 @@ public class Backup {
 
     private void sendChunk(PutChunkMessage message, int count, int timeout) {
          try {
+             Logger.getGlobal().info("Sending chunk: " + message.getFileId() + " - " + message.getChunkNo() + "\n" +
+                     "Retry number: " + count + " of " + NUM_RETRIES);
             peer.MessageUtils.sendMessage(message);
             Utils.scheduleAction(() -> {
                 ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
-                if (metadata != null && metadata.getRepDeg() >= message.getReplicationDeg()) {
+                if (metadata != null && metadata.getPeerIds().size() >= message.getReplicationDeg()) {
                     // If it received all confirmations (at least the same as the replication degree)
                     chunksPending--;
                 } else if (count >= NUM_RETRIES - 1) {
@@ -92,63 +94,4 @@ public class Backup {
             Logger.getGlobal().severe("Failed to send chunk: " + e.getLocalizedMessage());
         }
     }
-
-
-
-    /*private void handle( byte[][] fileChunks, int[] chunks, String fileId, int replicationDegree,
-                        int timeout, int numberOfTries, int index) throws IOException {
-
-        if(index >= fileChunks.length)
-            return;
-
-        int i = 0;
-        while(i < WINDOWSIZE && index < fileChunks.length) {
-            PutChunkMessage message = new PutChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), fileId, index, replicationDegree, fileChunks[index]);
-            peer.MessageUtils.sendMessage(message);
-            chunks[i] = index;
-            i++;
-            index++;
-        }
-
-        //resend chunks if failure
-        checkChunksStored(chunks, fileId, fileChunks, replicationDegree, timeout, 5);
-
-        handle(fileChunks, new int[WINDOWSIZE], fileId, replicationDegree, timeout, numberOfTries, index);
-
-    }
-
-    private void checkChunksStored(int[] chunks, String fileId, byte[][] fileChunks, int replicationDegree, int timeout, int nTries)  {
-
-        if(nTries == 0) {
-            Logger.getGlobal().info("Reached max number of tries...");
-            return;
-        }
-
-        Utils.scheduleAction(() -> {
-            boolean resend = false;
-            synchronized (peer.getAcks()) {
-                HashSet<Integer> set = peer.getAcks().get(fileId);
-                Logger.getGlobal().info("Verify if all chunks are stored...");
-
-                for (int i = 0; i < chunks.length; i++) {
-                    if (!set.contains(chunks[i])) {
-                        PutChunkMessage message = new PutChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), fileId, chunks[i], replicationDegree, fileChunks[i]);
-                        try {
-                            peer.MessageUtils.sendMessage(message);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-
-                        Logger.getGlobal().info("Resending...");
-                        resend = true;
-                    }
-                }
-            }
-
-            if(resend){
-                checkChunksStored(chunks, fileId, fileChunks, replicationDegree, timeout*2, nTries-1);
-                Logger.getGlobal().info("Resend chunks...");
-            }
-        }, timeout);
-    }*/
 }
