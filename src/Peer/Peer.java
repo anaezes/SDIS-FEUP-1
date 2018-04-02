@@ -220,12 +220,9 @@ public class Peer {
         }
 
         IControl control = (IControl) UnicastRemoteObject.exportObject(ProtocolController, 0);
-        try {
-            // Bind the remote object's stub in the registry
-            registry.bind( "peer" + this.getPeerId(), control);
-        } catch (AlreadyBoundException e) {
-            e.printStackTrace();
-        }
+        // Bind the remote object's stub in the registry
+        registry.rebind( "peer" + this.getPeerId(), control);
+
     }
 
     /**
