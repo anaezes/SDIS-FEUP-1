@@ -22,7 +22,7 @@ public class Backup {
 
     private final int WINDOWSIZE = 10;
     private final int NUM_RETRIES = 5;          // number of times it resends the message
-    private final int RESEND_TIMEOUT = 1000; // 1 second
+    private final int RESEND_TIMEOUT = 1000;    // 1 second
 
     private final Peer peer;
     private final int CHUNKSIZE;

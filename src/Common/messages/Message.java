@@ -154,7 +154,9 @@ public abstract class Message {
         Message msg = null;
 
         try {
-            byte[] data = packet.getData();
+            byte[] data = new byte[packet.getLength()];
+            System.arraycopy(packet.getData(), 0, data, 0, data.length);
+
             String value = new String(data, "UTF-8");
             String[] parameters = value.split(" ");
             String[] headerBody = value.split("\r\n\r\n", 2);
