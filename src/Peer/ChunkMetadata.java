@@ -1,8 +1,9 @@
 package Peer;
 
+import java.io.Serializable;
 import java.util.HashSet;
 
-public class ChunkMetadata {
+public class ChunkMetadata implements Serializable {
     private HashSet<Integer> peerIds;
     private String fileId;
     private int chunkNo;

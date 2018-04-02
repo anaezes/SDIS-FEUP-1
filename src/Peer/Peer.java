@@ -4,8 +4,7 @@ import Common.messages.Version;
 import Common.remote.IControl;
 import Peer.protocols.Controller;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.rmi.AlreadyBoundException;
@@ -60,8 +59,6 @@ public class Peer {
     //store the flags of chunks sent
     private final HashMap<String, HashSet<Integer>> chunksSent = new HashMap<>();
 
-    //store how many peers saved the chunk
-    private final ConcurrentHashMap<String, ChunkMetadata> chunkCount = new ConcurrentHashMap<>();
 
     //store the chunks to be ignored when received in a PutChunk message
     private final ArrayList<String> IgnorePutChunkUID;
@@ -74,6 +71,9 @@ public class Peer {
 
     // Contains handlers to all implemented protocols
     public final Controller ProtocolController;
+
+    //store how many peers saved the chunk
+    private ConcurrentHashMap<String, ChunkMetadata> chunkCount = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
         if (args.length < 3) {
@@ -120,6 +120,10 @@ public class Peer {
 
         // Creates new protocol controller
         this.ProtocolController = new Controller(this, CLIENT_DIRECTORY, CHUNKSIZE);
+
+        // Loads peer metadata files
+        Logger.getGlobal().info("Searching for peer metadata files");
+        loadChunkCountFromDisk();
 
         // Initiates communication channels
         initControlChannel(args[1], args[2]);
@@ -367,4 +371,45 @@ public class Peer {
                     }
                 }, DELAY_MS + 100);
     }
+
+    public void saveChunkCountToDisk() {
+        Logger.getGlobal().info("Saving chunk count to disk");
+        try {
+            //if (!getChunkCountFile().exists()) getChunkCountFile().createNewFile();
+            FileOutputStream fos = new FileOutputStream(getChunkCountFile(), false);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(chunkCount);
+            oos.flush();
+            oos.close();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            Logger.getGlobal().warning("FileNotFoundException while saving chunk to disk: " + e.getLocalizedMessage());
+        } catch (IOException e) {
+            Logger.getGlobal().warning("IOException while saving chunk to disk: " + e.getLocalizedMessage());
+        }
+    }
+
+    private void loadChunkCountFromDisk() {
+        if (!new File(getChunkCountFile()).exists()) return;
+        try {
+        Logger.getGlobal().info("Loading chunk count from disk");
+            FileInputStream fis = new FileInputStream(getChunkCountFile());
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            ois.close();
+            fis.close();
+            chunkCount = (ConcurrentHashMap<String, ChunkMetadata>) ois.readObject();
+        } catch (FileNotFoundException e) {
+            Logger.getGlobal().warning("FileNotFoundException while loading chunk to disk: " + e.getLocalizedMessage());
+        } catch (IOException e) {
+            Logger.getGlobal().warning("IOException while loading chunk to disk: " + e.getLocalizedMessage());
+        } catch (ClassNotFoundException e) {
+            Logger.getGlobal().warning("ClassNotFoundException while loading chunk to disk: " + e.getLocalizedMessage());
+        }
+
+    }
+
+    private String getChunkCountFile() {
+        return Paths.get(getFileSystemPath(), ".metadata-chunkCount").toString();
+    }
+
 }

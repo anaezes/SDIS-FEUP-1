@@ -64,15 +64,18 @@ public class CommunicationChannels {
                 Logger.getGlobal().info("Received message on MC Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
                 // Stores all peers that have the given chunk. Must be done even if the senderId == peerId
-                if (message instanceof StoredMessage) {
-                    ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
-                    if (metadata != null) {
-                        metadata.getPeerIds().add(message.getSenderId());
-                        peer.getChunkCount().put(message.getChunkUID(), metadata);
+                synchronized (peer.getChunkCount()) {
+                    if (message instanceof StoredMessage) {
+                        ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
+                        if (metadata != null) {
+                            metadata.getPeerIds().add(message.getSenderId());
+                            peer.getChunkCount().put(message.getChunkUID(), metadata);
+                            peer.saveChunkCountToDisk();
+                        }
+                        // Unlists the peer from chunk. Must be done even if the senderId == peerId
+                    } else if (message instanceof RemovedMessage) {
+                        peer.MessageUtils.handleRemovedMessage((RemovedMessage) message);
                     }
-                // Unlists the peer from chunk. Must be done even if the senderId == peerId
-                } else if (message instanceof RemovedMessage) {
-                    peer.MessageUtils.handleRemovedMessage((RemovedMessage)message);
                 }
 
                 if(message.getSenderId() == peer.getPeerId()) {
@@ -93,6 +96,7 @@ public class CommunicationChannels {
                                 if (metadata != null) {
                                     metadata.getPeerIds().add(message.getSenderId());
                                     peer.getChunkCount().putIfAbsent(message.getFileId()+ message.getChunkNo(), metadata);
+                                    peer.saveChunkCountToDisk();
                                 }
                             }
                         }
@@ -124,7 +128,7 @@ public class CommunicationChannels {
                 if(message instanceof PutChunkMessage) {
                     peer.getChunkCount().put(message.getChunkUID(),
                             new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
-
+                    peer.saveChunkCountToDisk();
                     peer.MessageUtils.handlePutChunkMessage((PutChunkMessage) message);
                 }
 
