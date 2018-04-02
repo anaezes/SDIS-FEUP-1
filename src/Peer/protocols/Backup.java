@@ -74,6 +74,7 @@ public class Backup {
             es.execute(new Thread(() -> sendChunk(message, 0, RESEND_TIMEOUT)));
         }
         // Waits for all threads to finish or until the maximum number of seconds all retries would take + 1 second
+        es.shutdown();
         es.awaitTermination(RESEND_TIMEOUT * (long)Math.pow(2, NUM_RETRIES) + 1000, TimeUnit.MILLISECONDS);
     }
 
