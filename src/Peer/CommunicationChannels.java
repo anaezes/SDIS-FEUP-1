@@ -17,7 +17,8 @@ public class CommunicationChannels {
 
     /**
      * Constructor for communication channels
-     * @param peer reference to peer
+     *
+     * @param peer      reference to peer
      * @param chunkSize the max size of each chunk
      */
     public CommunicationChannels(Peer peer, int chunkSize) {
@@ -78,33 +79,39 @@ public class CommunicationChannels {
                     }
                 }
 
-                if(message.getSenderId() == peer.getPeerId()) {
+                if (message.getSenderId() == peer.getPeerId()) {
                     continue;
                 }
-                    if (message instanceof StoredMessage) {
-                        if(peer.isInitiatorPeer) {
-                            //store sent ack
-                            synchronized (peer.getAcks()) {
-                                HashSet<Integer> set = peer.getAcks().getOrDefault(message.getFileId(), new HashSet<>());
-                                set.add(message.getChunkNo());
-                                peer.getAcks().putIfAbsent(message.getFileId(), set);
+                if (message instanceof StoredMessage) {
+                    if (peer.isInitiatorPeer) {
+                        //store sent ack
+                        synchronized (peer.getAcks()) {
+                            HashSet<Integer> set = peer.getAcks().getOrDefault(message.getFileId(), new HashSet<>());
+                            set.add(message.getChunkNo());
+                            peer.getAcks().putIfAbsent(message.getFileId(), set);
+                        }
+                    } else {
+                        synchronized (peer.getChunkCount()) {
+                            ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
+                            if (metadata != null) {
+                                metadata.getPeerIds().add(message.getSenderId());
+                                peer.getChunkCount().putIfAbsent(message.getFileId() + message.getChunkNo(), metadata);
+                                peer.saveChunkCountToDisk();
                             }
                         }
-                        else {
-                            synchronized (peer.getChunkCount()) {
-                                ChunkMetadata metadata = peer.getChunkCount().get(message.getChunkUID());
-                                if (metadata != null) {
-                                    metadata.getPeerIds().add(message.getSenderId());
-                                    peer.getChunkCount().putIfAbsent(message.getFileId()+ message.getChunkNo(), metadata);
-                                    peer.saveChunkCountToDisk();
-                                }
-                            }
-                        }
-                    } else if (message instanceof DeleteMessage) {
-                        peer.MessageUtils.handleDeleteMessage((DeleteMessage) message);
-                    } else if (message instanceof GetChunkMessage) {
-                        peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
                     }
+                } else if (message instanceof DeleteMessage) {
+                    peer.MessageUtils.handleDeleteMessage((DeleteMessage) message);
+                } else if (message instanceof GetChunkMessage) {
+                    peer.MessageUtils.handleGetChunkMessage((GetChunkMessage) message);
+                } else if (message instanceof GetDeletedMessage) {
+                    synchronized (peer.getDeletedFiles()) {
+                        if (peer.getDeletedFiles().contains(message.getFileId())) {
+                            DeleteMessage delMessage = new DeleteMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), message.getFileId());
+                            peer.MessageUtils.sendMessage(delMessage);
+                        }
+                    }
+                }
             } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
@@ -115,7 +122,7 @@ public class CommunicationChannels {
      * Handle data channel messages
      */
     private void handleDataChannel() {
-        byte[] buffer = new byte[CHUNKSIZE+256];
+        byte[] buffer = new byte[CHUNKSIZE + 256];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
         while (true) {
@@ -125,7 +132,7 @@ public class CommunicationChannels {
                 Message message = Message.parseMessage(packet);
                 Logger.getGlobal().info("Received message on MDB Channel: " + message.getMessageType() + " by peer " + message.getSenderId());
 
-                if(message instanceof PutChunkMessage) {
+                if (message instanceof PutChunkMessage) {
                     peer.getChunkCount().put(message.getChunkUID(),
                             new ChunkMetadata(message.getFileId(), message.getChunkNo(), message.getReplicationDeg()));
                     peer.saveChunkCountToDisk();
@@ -142,7 +149,7 @@ public class CommunicationChannels {
      * Handle data recovery channel messages
      */
     private void handleRecoveryChannel() {
-        byte[] buffer = new byte[CHUNKSIZE+256];
+        byte[] buffer = new byte[CHUNKSIZE + 256];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 
         while (true) {
@@ -153,16 +160,15 @@ public class CommunicationChannels {
 
                 Logger.getGlobal().info("Received message on MDR Channel: " + message.getMessageType());
 
-                if(message instanceof ChunkMessage) {
-                    if(peer.isInitiatorPeer) {
+                if (message instanceof ChunkMessage) {
+                    if (peer.isInitiatorPeer) {
                         Logger.getGlobal().info("Recevied chunk from peer " + message.getSenderId());
                         HashMap<Integer, byte[]> chunk = peer.getRestore().getOrDefault(message.getFileId(), new HashMap<>());
                         chunk.put(message.getChunkNo(), message.getBody());
                         peer.getRestore().putIfAbsent(message.getFileId(), chunk);
-                    }
-                    else {
+                    } else {
                         //clear hashMap
-                        if(message.getChunkNo() == 0 && peer.getChunksSent().containsKey(message.getFileId()))
+                        if (message.getChunkNo() == 0 && peer.getChunksSent().containsKey(message.getFileId()))
                             peer.getChunksSent().get(message.getFileId()).clear();
 
                         HashSet<Integer> set = peer.getChunksSent().getOrDefault(message.getFileId(), new HashSet<>());

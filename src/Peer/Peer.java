@@ -8,6 +8,7 @@ import java.io.*;
 import java.net.*;
 import java.nio.file.*;
 import java.rmi.AlreadyBoundException;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -135,6 +136,9 @@ public class Peer {
         initDataChannel(args[3], args[4]);
         initRecoveryChannel(args[5], args[6]);
         initRMIChannel(1099);
+
+        // Checks if any deleted request was made while peer was offline
+        ProtocolController.validateDeleted();
     }
 
     /**
@@ -327,6 +331,13 @@ public class Peer {
                 if (id.equals(fileId))
                     return;
             deletedFiles.add(fileId);
+        }
+        synchronized (chunkCount) {
+            chunkCount.forEach((k, v) -> {
+                if (k.startsWith(fileId)) { // Key is fileId + chunkNo
+                    chunkCount.remove(k);
+                }
+            });
         }
     }
 

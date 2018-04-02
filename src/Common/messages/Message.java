@@ -136,7 +136,8 @@ public abstract class Message {
         GETCHUNK("GETCHUNK"),
         CHUNK("CHUNK"),
         DELETE("DELETE"),
-        REMOVED("REMOVED");
+        REMOVED("REMOVED"),
+        GET_DELETED("GET_DELETED");
 
         private final String type;
 
@@ -193,6 +194,9 @@ public abstract class Message {
                     msg = new RemovedMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
                             Integer.parseInt(parameters[2]), parameters[3], Integer.parseInt(parameters[4]));
                     break;
+                case "GET_DELETED":
+                    msg = new GetDeletedMessage(new Version(Integer.parseInt(version[0]), Integer.parseInt(version[1])),
+                            Integer.parseInt(parameters[2]), parameters[3]);
             }
 
         } catch (IOException e) {

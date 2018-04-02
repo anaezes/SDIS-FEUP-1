@@ -10,8 +10,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.logging.Logger;
 
-import static java.lang.Thread.sleep;
-
 public class MessageUtils {
     private final Peer peer;
     private final int NUMBER_TRIES;
@@ -56,6 +54,7 @@ public class MessageUtils {
         if(message.getSenderId() == peer.getPeerId())
             return;
 
+        peer.addDeletedFile(message.getFileId());
         File file = new File(peer.getFileSystemPath() + File.separator + message.getFileId());
 
         if(!file.exists())
@@ -179,6 +178,9 @@ public class MessageUtils {
                 packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
                 peer.getMcSocket().send(packet);
                 break;
+            case GET_DELETED:
+                packet = new DatagramPacket(message.getBytes(), message.getBytes().length, peer.getMcAddr(), peer.getMcPort());
+                peer.getMcSocket().send(packet);
         }
 
     }

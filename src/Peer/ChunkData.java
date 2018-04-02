@@ -2,7 +2,7 @@ package Peer;
 
 import java.io.Serializable;
 
-public class ChunkData implements Serializable {
+public class ChunkData {
     private final int chunkNo;
     private final byte[] chunkData;
 
