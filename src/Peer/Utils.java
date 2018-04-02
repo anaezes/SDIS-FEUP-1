@@ -9,6 +9,9 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -32,15 +35,16 @@ public class Utils {
     /**
      * Split file in array of chunks
      * @param fileContent
-     * @return array of byte array with all chunks of fileContent
+     * @return array of byte arrays with all chunks of fileContent
      */
-    public static byte[][] getFileChunks(byte[] fileContent, int chunksize) {
-        byte buffer[][] = new byte[fileContent.length/chunksize+1][chunksize];
+    public static byte[][] getFileChunks(byte[] fileContent, int chunkSize) {
+        byte buffer[][] = new byte[fileContent.length/chunkSize + 1][chunkSize];
 
         for(int i = 0; i < buffer.length; i++) {
-            System.arraycopy(fileContent, chunksize*i, buffer[i], 0,
-                    i < buffer.length -1 ? chunksize : fileContent.length % chunksize);
+            System.arraycopy(fileContent, chunkSize*i, buffer[i], 0,
+                    i < buffer.length -1 ? chunkSize : fileContent.length % chunkSize);
         }
+        buffer[buffer.length-1] = Utils.trim(buffer[buffer.length-1]);
 
         return buffer;
     }
@@ -134,5 +138,12 @@ public class Utils {
         if  (file.exists())
             return Files.readAllBytes(path);
         else return null;
+    }
+
+    public static Queue<ChunkData> getQueueFromByteArray(byte[][] buf) {
+        Queue<ChunkData> queue = new LinkedList<>();
+        for (int i = 0; i < buf.length; i++)
+            queue.add(new ChunkData(i, buf[i]));
+        return queue;
     }
 }
