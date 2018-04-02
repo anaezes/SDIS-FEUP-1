@@ -4,7 +4,10 @@ import Common.messages.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,7 +24,6 @@ public class MessageUtils {
     }
 
     public void handleGetChunkMessage(GetChunkMessage message) throws InterruptedException, IOException {
-
         // tenho ? -> obtenho o chunk se não aborta
         File file = new File(peer.getFileSystemPath() + File.separator + message.getFileId());
         if(!file.exists())
@@ -43,7 +45,8 @@ public class MessageUtils {
                 //send message STORED chunk
                 ChunkMessage chunkMessage = new ChunkMessage(Peer.PROTOCOL_VERSION, peer.getPeerId(), message.getFileId(),
                         message.getChunkNo(), Files.readAllBytes(chunk.toPath()));
-                sendMessage(chunkMessage);
+                if (!sendThroughTCP(message, chunkMessage, false))
+                    sendMessage(chunkMessage);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -183,5 +186,33 @@ public class MessageUtils {
                 peer.getMcSocket().send(packet);
         }
 
+    }
+
+    private boolean sendThroughTCP(Message inMessage, ChunkMessage outMessage, boolean isRetry) {
+        try {
+            Socket socket = new Socket(InetAddress.getByName("localhost"), inMessage.getSenderId() * 10);
+            if (socket.isConnected()) { // If can send data through TCP socket
+                ObjectOutputStream toServer = new ObjectOutputStream(socket.getOutputStream());
+                toServer.writeObject(outMessage);
+                toServer.flush();
+                toServer.close();
+                socket.close();
+                Logger.getGlobal().info("Chunk " + outMessage.getChunkNo() + "sent through TCP");
+                return true;
+            }
+        } catch (IOException e) {
+            Logger.getGlobal().warning("Couldn't send data through TCP: " + e.getLocalizedMessage());
+        }
+
+        if (!isRetry) {
+            try {
+                Thread.sleep(peer.DELAY_MS);
+                return sendThroughTCP(inMessage, outMessage, true);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        Logger.getGlobal().warning("Couldn't find a TCP connection, falling back to multicast...");
+        return false;
     }
 }

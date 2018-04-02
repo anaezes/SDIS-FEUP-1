@@ -1,11 +1,13 @@
 package Common.messages;
 
+import java.io.Serializable;
+
 /*
  * This is the version of the protocol. It is a three ASCII char sequence with the format <n>'.'<m>,
  * where <n> and <m> are the ASCII codes of digits. For example, version 1.0, the one specified in this document,
  * should be encoded as the char sequence '1''.''0'.
  */
-public class Version {
+public class Version implements Serializable {
     private int n, m;
     private boolean unset = true;
 

@@ -1,10 +1,11 @@
 package Common.messages;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.DatagramPacket;
 import java.util.Arrays;
 
-public abstract class Message {
+public abstract class Message implements Serializable {
     /*
      * This is the type of the message. Each subprotocol specifies its own message types. This field determines the
      * format of the message and what actions its receivers should perform.

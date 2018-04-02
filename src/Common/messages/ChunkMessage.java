@@ -1,6 +1,8 @@
 package Common.messages;
 
-public class ChunkMessage extends Message {
+import java.io.Serializable;
+
+public class ChunkMessage extends Message implements Serializable {
     public ChunkMessage(Version version, int senderId, String fileId, int chunkNo, byte[] body) {
         super(MessageType.CHUNK);
         this.setVersion(version);

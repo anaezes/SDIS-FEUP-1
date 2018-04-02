@@ -7,8 +7,6 @@ import Peer.protocols.Controller;
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
-import java.rmi.AlreadyBoundException;
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -51,6 +49,9 @@ public class Peer {
     private MulticastSocket mdrSocket;
     private InetAddress mdrAddr;
     private int mdrPort;
+
+    // TCP Socket
+    private final ServerSocket tcpSocket;
 
     //store received ACKs
     private final HashMap<String, HashSet<Integer>> acks = new HashMap<>();
@@ -137,8 +138,12 @@ public class Peer {
         initRecoveryChannel(args[5], args[6]);
         initRMIChannel(1099);
 
+        // Initializes server TCP socket
+        tcpSocket = new ServerSocket(peerId*10, 0, InetAddress.getByName("localhost"));
+
         // Checks if any deleted request was made while peer was offline
         ProtocolController.validateDeleted();
+
     }
 
     /**
@@ -239,7 +244,6 @@ public class Peer {
             Files.createDirectory(path);
     }
 
-
     /**
     * Creates threads that wait for messages from channels
     */
@@ -319,6 +323,10 @@ public class Peer {
 
     public ArrayList<String> getIgnorePutChunkUID() {
         return IgnorePutChunkUID;
+    }
+
+    public ServerSocket getTcpSocket() {
+        return tcpSocket;
     }
 
     public ConcurrentLinkedQueue<String> getDeletedFiles() {
