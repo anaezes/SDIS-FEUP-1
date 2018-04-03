@@ -24,6 +24,11 @@ ou
 
 ```java -Duser.dir=$(pwd) -cp build Peer.Peer <Peer_id> <MC_IP> <MC_PORT> <MDB_IP> <MDB_PORT> <MDR_IP> <MDR_PORT> [capacity=1m]```
 
+em que a capacidade pode ser : 
+* k - Kilobyte
+* m - Megabyte
+* g - Gigabyte
+
 ### Cliente
 ```java -Duser.dir=$(pwd) -cp build Client.Client <peer_ap> <operation> <opnd_1> <opnd_2>```
 
